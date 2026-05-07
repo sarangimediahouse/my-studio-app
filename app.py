@@ -6,7 +6,7 @@ from datetime import date
 
 # --- APP CONFIG ---
 st.set_page_config(page_title="Studio Pro + Balance", layout="wide")
-st.title("📸 Studio Manager & Digital Wallet")
+st.title("SARANGI MEDIA HOUSE")
 
 # Connect to Google Sheets
 conn = st.connection("gsheets", type=GSheetsConnection)
@@ -46,51 +46,73 @@ with tab1:
         st.divider()
         st.subheader("Upcoming Shoot Schedule")
         upcoming = df[df['Type'] == "Shoot"].copy()
-        upcoming['Date'] = pd.to_datetime(upcoming['Date'])
-        upcoming = upcoming[upcoming['Date'] >= pd.Timestamp(date.today())].sort_values('Date')
+       upcoming['Sort_Date'] = pd.to_datetime(upcoming['Date'].apply(lambda x: str(x).split(', ')[0]), errors='coerce')
+upcoming = upcoming[upcoming['Sort_Date'] >= pd.Timestamp(date.today())].sort_values('Sort_Date')
         st.table(upcoming[['Date', 'Project', 'Total', 'Remaining']].head(5))
     else:
         st.info("No data yet. Start by adding a booking or expense!")
 
 # --- TAB 2: NEW BOOKING ---
 # --- TAB 2: NEW BOOKING ---
+# --- TAB 2: NEW BOOKING ---
 with tab2:
     st.subheader("Add New Shoot & Advance")
     with st.form("shoot_form", clear_on_submit=True):
+        name = st.text_input("Client Name")
+        
+        # --- MULTI-EVENT DATE PICKERS ---
+        st.write("📅 **Select Shoot Dates** (Leave Event 2 and 3 blank if not needed)")
+        col_d1, col_d2, col_d3 = st.columns(3)
+        
+        # value=None keeps them blank until you click them
+        date1 = col_d1.date_input("Event 1 (Main)", value=None)
+        date2 = col_d2.date_input("Event 2 (Optional)", value=None)
+        date3 = col_d3.date_input("Event 3 (Optional)", value=None)
+        # --------------------------------
+        
         c1, c2 = st.columns(2)
-        name = c1.text_input("Client Name")
-        
-        # --- NEW NEPALI DATE SECTION ---
-        s_date = c2.date_input("Shoot Date (AD)")
-        try:
-            nepali_date = nepali_datetime.date.from_datetime_date(s_date)
-            c2.caption(f"🇳🇵 Auto BS Date: **{nepali_date}**")
-        except:
-            nepali_date = "N/A"
-        # -------------------------------
-        
         total_val = c1.number_input("Full Project Price (NPR)", min_value=0)
         adv_val = c2.number_input("Advance/Deposit Paid (NPR)", min_value=0)
         method = st.selectbox("Payment Method", ["eSewa", "Fonepay", "Cash", "Bank"])
         
         if st.form_submit_button("Save Booking"):
-            # --- UPDATED SAVE TO GOOGLE SHEETS ---
-            new_row = pd.DataFrame([{
-                "Project": name, 
-                "Date": str(s_date), 
-                "BS Date": str(nepali_date), # Saves to the new column!
-                "Total": total_val, 
-                "Advance": adv_val, 
-                "Method": method, 
-                "Expenses": 0, 
-                "Type": "Shoot"
-            }])
-            # -------------------------------------
+            # Group the dates the user actually clicked
+            valid_dates = [d for d in [date1, date2, date3] if d is not None]
             
-            updated_df = pd.concat([df, new_row], ignore_index=True)
-            conn.update(worksheet="Sheet1", data=updated_df)
-            st.success("Booking and Advance saved!")
-            st.rerun()
+            if len(valid_dates) == 0:
+                st.error("⚠️ Please select at least one shoot date!")
+            else:
+                eng_dates = []
+                nep_dates = []
+                
+                # Convert every chosen date to Nepali
+                for d in valid_dates:
+                    eng_dates.append(str(d))
+                    try:
+                        nep = str(nepali_datetime.date.from_datetime_date(d))
+                        nep_dates.append(nep)
+                    except:
+                        pass
+                
+                # Join them with commas
+                eng_date_str = ", ".join(eng_dates)
+                nep_date_str = ", ".join(nep_dates)
+                
+                new_row = pd.DataFrame([{
+                    "Project": name, 
+                    "Date": eng_date_str, 
+                    "BS Date": nep_date_str, 
+                    "Total": total_val, 
+                    "Advance": adv_val, 
+                    "Method": method, 
+                    "Expenses": 0, 
+                    "Type": "Shoot"
+                }])
+                
+                updated_df = pd.concat([df, new_row], ignore_index=True)
+                conn.update(worksheet="Sheet1", data=updated_df)
+                st.success(f"Booking saved! 🇳🇵 BS Dates: {nep_date_str}")
+                st.rerun()
 # --- TAB 3: LEDGER (History) ---
 # --- TAB 3: LEDGER & EDIT (History) ---
 with tab3:
