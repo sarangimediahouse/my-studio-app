@@ -10,7 +10,7 @@ st.set_page_config(page_title="Sarangi Media House", page_icon="sarangi.png", la
 
 # This puts a nice big logo right on the main page!
 # You can change the 'width' number to make it perfectly sized.
-st.image("sarangi.png", width=300)
+st.image("sarangi.png", width=200)
 
 # You can keep your SARANGI MEDIA HOUSE text right below it
 st.title("SARANGI MEDIA HOUSE")
