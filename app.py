@@ -70,15 +70,20 @@ with tab2:
             st.rerun()
 
 # --- TAB 3: LEDGER (History) ---
+# --- TAB 3: LEDGER & EDIT (History) ---
 with tab3:
-    st.subheader("Transaction History")
+    st.subheader("Transaction History & Editor")
     if not df.empty:
-        search = st.text_input("🔍 Search Client Name")
-        display_df = df.copy()
-        if search:
-            display_df = display_df[display_df['Project'].str.contains(search, case=False)]
+        st.info("💡 You can double-click any cell below to edit it. You can also check the box on the far left of a row and press 'Delete' on your keyboard to remove a row.")
         
-        st.dataframe(display_df, use_container_width=True)
+        # This creates the editable table
+        edited_df = st.data_editor(df, num_rows="dynamic", use_container_width=True)
+        
+        # A button to save the changes back to Google Sheets
+        if st.button("💾 Save Edits to Cloud"):
+            conn.update(worksheet="Sheet1", data=edited_df)
+            st.success("Changes saved successfully!")
+            st.rerun()
     else:
         st.write("No transactions yet.")
 
