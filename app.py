@@ -26,8 +26,22 @@ tab1, tab2, tab3, tab4 = st.tabs(["📊 Dashboard", "📅 New Booking", "📜 Le
 with tab1:
     if not df.empty:
         # Calculate Finance Metrics
-        total_collected = df["Advance"].sum()
+        # --- TAB 1: DASHBOARD (Money Overview) ---
+        # Fill any empty cells with 0 to prevent math crashes
+        df['Advance'] = pd.to_numeric(df['Advance'], errors='coerce').fillna(0)
+        df['Final Payment'] = pd.to_numeric(df.get('Final Payment', 0), errors='coerce').fillna(0)
+        df['Expenses'] = pd.to_numeric(df['Expenses'], errors='coerce').fillna(0)
+        df['Total'] = pd.to_numeric(df['Total'], errors='coerce').fillna(0)
+
+        # Calculate Finance Metrics
+        total_collected = df["Advance"].sum() + df["Final Payment"].sum()
         total_spent = df["Expenses"].sum()
+        available_balance = total_collected - total_spent
+        
+        # Pending & Credit Logic
+        df['Remaining'] = df['Total'] - (df['Advance'] + df['Final Payment'])
+        total_pending = df[df['Remaining'] > 0]['Remaining'].sum()
+        total_credit = abs(df[df['Remaining'] < 0]['Remaining'].sum())
         
         # AVAILABLE BALANCE = Money in - Money out
         available_balance = total_collected - total_spent
@@ -52,6 +66,7 @@ with tab1:
     else:
         st.info("No data yet. Start by adding a booking or expense!")
 
+# --- TAB 2: NEW BOOKING ---
 # --- TAB 2: NEW BOOKING ---
 # --- TAB 2: NEW BOOKING ---
 # --- TAB 2: NEW BOOKING ---
@@ -120,6 +135,7 @@ with tab2:
                     "BS Date": nep_date_str, 
                     "Total": total_val, 
                     "Advance": adv_val, 
+                    "Final Payment": 0,  # <--- Here is the new line safely tucked inside!
                     "Method": method, 
                     "Expenses": 0, 
                     "Type": "Shoot"
