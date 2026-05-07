@@ -3,13 +3,14 @@ import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from datetime import date
+
 # --- YOUR BRANDING ---
 # This puts the logo in your internet browser tab
-st.set_page_config(page_title="Studio Manager", page_icon="sarangi.png", layout="wide")
+st.set_page_config(page_title="Sarangi Media House", page_icon="sarangi.png", layout="wide")
 
 # This puts a nice big logo right on the main page!
-# You can change the 'width' number (like 250, 300, or 400) to make it perfectly sized.
-st.image("logo.png", width=300) 
+# You can change the 'width' number to make it perfectly sized.
+st.image("sarangi.png", width=300)
 
 # You can keep your SARANGI MEDIA HOUSE text right below it
 st.title("SARANGI MEDIA HOUSE")
