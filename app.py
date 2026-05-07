@@ -7,13 +7,16 @@ from datetime import date
 # This puts the logo in your internet browser tab
 st.set_page_config(page_title="Studio Manager", page_icon="sarangi.png", layout="wide")
 
-# This puts the logo in the top-left corner (like YouTube)
-st.logo("sarangi.png") 
+# This keeps your logo in the internet browser tab up top
+st.set_page_config(page_title="Sarangi Media House", page_icon="logo.png", layout="wide")
 
-# Your main title
-st.title("My Studio Manager")
+# This puts a nice big logo right on the main page!
+# You can change the 'width' number (like 250, 300, or 400) to make it perfectly sized.
+st.image("logo.png", width=300) 
+
+# You can keep your SARANGI MEDIA HOUSE text right below it
+st.title("SARANGI MEDIA HOUSE")
 st.write("---")
-# ---------------------
 
 # --- APP CONFIG ---
 st.set_page_config(page_title="Studio Pro + Balance", layout="wide")
