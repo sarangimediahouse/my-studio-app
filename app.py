@@ -149,21 +149,32 @@ with tab2:
 # --- TAB 3: LEDGER (History) ---
 # --- TAB 3: LEDGER & EDIT (History) ---
 # --- TAB 3: LEDGER ---
+# --- TAB 3: LEDGER ---
 with tab3:
     st.subheader("Transaction Ledger")
     if not df.empty:
-        st.info("Double-click 'Final Payment' to record the remaining balance, then click Save below.")
+        st.info("💡 Double-click 'Final Payment' to record the remaining balance, then click Save below.")
         
-        # This makes the table editable
-        edited_df = st.data_editor(df, use_container_width=True, num_rows="dynamic")
+        # 1. Ensure numbers are treated correctly
+        df['Final Payment'] = pd.to_numeric(df.get('Final Payment', 0), errors='coerce').fillna(0)
         
+        # 2. THE SORTING MAGIC
+        # Create a hidden column that snips out just the very first date string so Python can read it
+        df['Secret_Sort'] = pd.to_datetime(df['Date'].apply(lambda x: str(x).split(', ')[0].split(' ')[0]), errors='coerce')
+        
+        # Sort the data using that hidden date, delete the hidden column, and reset the row numbers
+        df = df.sort_values(by='Secret_Sort', ascending=True).drop(columns=['Secret_Sort']).reset_index(drop=True)
+        
+        # 3. Display the editable table
+        edited_df = st.data_editor(df, num_rows="dynamic", use_container_width=True)
+        
+        # 4. Save button
         if st.button("💾 Save Changes to Cloud"):
             conn.update(worksheet="Sheet1", data=edited_df)
-            st.success("Database updated! Your Dashboard is now refreshed.")
+            st.success("Changes saved! Your Google Sheet is now sorted too.")
             st.rerun()
     else:
         st.write("No transactions yet.")
-
 # --- TAB 4: LOG EXPENSE ---
 # --- TAB 4: ADD EXPENSES (Freelancers, Gear, etc.) ---
 with tab4:
