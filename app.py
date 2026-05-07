@@ -10,6 +10,9 @@ st.set_page_config(page_title="Studio Manager", page_icon="sarangi.png", layout=
 # This keeps your logo in the internet browser tab up top
 st.set_page_config(page_title="Sarangi Media House", page_icon="logo.png", layout="wide")
 
+# This keeps your logo in the internet browser tab up top
+st.set_page_config(page_title="Sarangi Media House", page_icon="logo.png", layout="wide")
+
 # This puts a nice big logo right on the main page!
 # You can change the 'width' number (like 250, 300, or 400) to make it perfectly sized.
 st.image("logo.png", width=300) 
@@ -17,10 +20,6 @@ st.image("logo.png", width=300)
 # You can keep your SARANGI MEDIA HOUSE text right below it
 st.title("SARANGI MEDIA HOUSE")
 st.write("---")
-
-# --- APP CONFIG ---
-st.set_page_config(page_title="Studio Pro + Balance", layout="wide")
-st.title("SARANGI MEDIA HOUSE")
 
 # Connect to Google Sheets
 conn = st.connection("gsheets", type=GSheetsConnection)
