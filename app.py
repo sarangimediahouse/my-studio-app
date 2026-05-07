@@ -46,7 +46,7 @@ with tab1:
         st.divider()
         st.subheader("Upcoming Shoot Schedule")
         upcoming = df[df['Type'] == "Shoot"].copy()
-        upcoming['Sort_Date'] = pd.to_datetime(upcoming['Date'].apply(lambda x: str(x).split(', ')[0]), errors='coerce')
+        upcoming['Sort_Date'] = pd.to_datetime(upcoming['Date'].apply(lambda x: str(x).split(', ')[0].split(' ')[0]), errors='coerce')
         upcoming = upcoming[upcoming['Sort_Date'] >= pd.Timestamp(date.today())].sort_values('Sort_Date')
         st.table(upcoming[['Date', 'Project', 'Total', 'Remaining']].head(5))
     else:
@@ -55,46 +55,62 @@ with tab1:
 # --- TAB 2: NEW BOOKING ---
 # --- TAB 2: NEW BOOKING ---
 # --- TAB 2: NEW BOOKING ---
+# --- TAB 2: NEW BOOKING ---
 with tab2:
     st.subheader("Add New Shoot & Advance")
     with st.form("shoot_form", clear_on_submit=True):
         name = st.text_input("Client Name")
         
-        # --- MULTI-EVENT DATE PICKERS ---
-        st.write("📅 **Select Shoot Dates** (Leave Event 2 and 3 blank if not needed)")
-        col_d1, col_d2, col_d3 = st.columns(3)
+        # --- 5 EDITABLE EVENT OPTIONS ---
+        st.write("📅 **Select up to 5 Events** (Leave date blank if not needed)")
         
-        # value=None keeps them blank until you click them
-        date1 = col_d1.date_input("Event 1 (Main)", value=None)
-        date2 = col_d2.date_input("Event 2 (Optional)", value=None)
-        date3 = col_d3.date_input("Event 3 (Optional)", value=None)
+        e1_col1, e1_col2 = st.columns(2)
+        n1 = e1_col1.text_input("Event 1 Name", value="Main Event")
+        d1 = e1_col2.date_input("Event 1 Date", value=None)
+        
+        e2_col1, e2_col2 = st.columns(2)
+        n2 = e2_col1.text_input("Event 2 Name", value="Reception")
+        d2 = e2_col2.date_input("Event 2 Date", value=None)
+        
+        e3_col1, e3_col2 = st.columns(2)
+        n3 = e3_col1.text_input("Event 3 Name", value="Post Shoot")
+        d3 = e3_col2.date_input("Event 3 Date", value=None)
+        
+        e4_col1, e4_col2 = st.columns(2)
+        n4 = e4_col1.text_input("Event 4 Name", value="Event 4")
+        d4 = e4_col2.date_input("Event 4 Date", value=None)
+        
+        e5_col1, e5_col2 = st.columns(2)
+        n5 = e5_col1.text_input("Event 5 Name", value="Event 5")
+        d5 = e5_col2.date_input("Event 5 Date", value=None)
         # --------------------------------
         
+        st.divider()
         c1, c2 = st.columns(2)
         total_val = c1.number_input("Full Project Price (NPR)", min_value=0)
         adv_val = c2.number_input("Advance/Deposit Paid (NPR)", min_value=0)
         method = st.selectbox("Payment Method", ["eSewa", "Fonepay", "Cash", "Bank"])
         
         if st.form_submit_button("Save Booking"):
-            # Group the dates the user actually clicked
-            valid_dates = [d for d in [date1, date2, date3] if d is not None]
+            # Group the events the user actually selected
+            events = [(n1, d1), (n2, d2), (n3, d3), (n4, d4), (n5, d5)]
+            valid_events = [e for e in events if e[1] is not None]
             
-            if len(valid_dates) == 0:
+            if len(valid_events) == 0:
                 st.error("⚠️ Please select at least one shoot date!")
             else:
                 eng_dates = []
                 nep_dates = []
                 
-                # Convert every chosen date to Nepali
-                for d in valid_dates:
-                    eng_dates.append(str(d))
+                for ev_name, ev_date in valid_events:
+                    # This creates the nice format: "2026-05-08 (Wedding)"
+                    eng_dates.append(f"{ev_date} ({ev_name})")
                     try:
-                        nep = str(nepali_datetime.date.from_datetime_date(d))
-                        nep_dates.append(nep)
+                        nep = str(nepali_datetime.date.from_datetime_date(ev_date))
+                        nep_dates.append(f"{nep} ({ev_name})")
                     except:
                         pass
                 
-                # Join them with commas
                 eng_date_str = ", ".join(eng_dates)
                 nep_date_str = ", ".join(nep_dates)
                 
