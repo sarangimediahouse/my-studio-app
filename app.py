@@ -1,3 +1,4 @@
+import nepali_datetime
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
@@ -52,23 +53,44 @@ with tab1:
         st.info("No data yet. Start by adding a booking or expense!")
 
 # --- TAB 2: NEW BOOKING ---
+# --- TAB 2: NEW BOOKING ---
 with tab2:
     st.subheader("Add New Shoot & Advance")
     with st.form("shoot_form", clear_on_submit=True):
         c1, c2 = st.columns(2)
         name = c1.text_input("Client Name")
-        s_date = c2.date_input("Shoot Date")
+        
+        # --- NEW NEPALI DATE SECTION ---
+        s_date = c2.date_input("Shoot Date (AD)")
+        try:
+            nepali_date = nepali_datetime.date.from_datetime_date(s_date)
+            c2.caption(f"🇳🇵 Auto BS Date: **{nepali_date}**")
+        except:
+            nepali_date = "N/A"
+        # -------------------------------
+        
         total_val = c1.number_input("Full Project Price (NPR)", min_value=0)
         adv_val = c2.number_input("Advance/Deposit Paid (NPR)", min_value=0)
         method = st.selectbox("Payment Method", ["eSewa", "Fonepay", "Cash", "Bank"])
         
         if st.form_submit_button("Save Booking"):
-            new_row = pd.DataFrame([{"Project": name, "Date": str(s_date), "Total": total_val, "Advance": adv_val, "Method": method, "Expenses": 0, "Type": "Shoot"}])
+            # --- UPDATED SAVE TO GOOGLE SHEETS ---
+            new_row = pd.DataFrame([{
+                "Project": name, 
+                "Date": str(s_date), 
+                "BS Date": str(nepali_date), # Saves to the new column!
+                "Total": total_val, 
+                "Advance": adv_val, 
+                "Method": method, 
+                "Expenses": 0, 
+                "Type": "Shoot"
+            }])
+            # -------------------------------------
+            
             updated_df = pd.concat([df, new_row], ignore_index=True)
             conn.update(worksheet="Sheet1", data=updated_df)
             st.success("Booking and Advance saved!")
             st.rerun()
-
 # --- TAB 3: LEDGER (History) ---
 # --- TAB 3: LEDGER & EDIT (History) ---
 with tab3:
