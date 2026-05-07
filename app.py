@@ -23,48 +23,41 @@ except:
 tab1, tab2, tab3, tab4 = st.tabs(["📊 Dashboard", "📅 New Booking", "📜 Ledger", "💸 Log Expense"])
 
 # --- TAB 1: DASHBOARD (Money Overview) ---
+# --- TAB 1: DASHBOARD (Money Overview) ---
 with tab1:
     if not df.empty:
-        # Calculate Finance Metrics
-        # --- TAB 1: DASHBOARD (Money Overview) ---
-        # Fill any empty cells with 0 to prevent math crashes
+        # 1. Clean the data (convert text to numbers so math works)
         df['Advance'] = pd.to_numeric(df['Advance'], errors='coerce').fillna(0)
-        df['Final Payment'] = pd.to_numeric(df.get('Final Payment', 0), errors='coerce').fillna(0)
+        # We use .get() just in case the column name has a tiny typo
+        final_col = 'Final Payment' if 'Final Payment' in df.columns else 'Final_Payment'
+        df['Final Payment'] = pd.to_numeric(df.get(final_col, 0), errors='coerce').fillna(0)
         df['Expenses'] = pd.to_numeric(df['Expenses'], errors='coerce').fillna(0)
         df['Total'] = pd.to_numeric(df['Total'], errors='coerce').fillna(0)
 
-        # Calculate Finance Metrics
+        # 2. Calculate Finance Metrics (Advance + Final Payment = Total Cash)
         total_collected = df["Advance"].sum() + df["Final Payment"].sum()
         total_spent = df["Expenses"].sum()
         available_balance = total_collected - total_spent
         
-        # Pending & Credit Logic
+        # 3. Calculate Pending Money
         df['Remaining'] = df['Total'] - (df['Advance'] + df['Final Payment'])
         total_pending = df[df['Remaining'] > 0]['Remaining'].sum()
-        total_credit = abs(df[df['Remaining'] < 0]['Remaining'].sum())
-        
-        # AVAILABLE BALANCE = Money in - Money out
-        available_balance = total_collected - total_spent
-        
-        # Pending & Credit Logic
-        df['Remaining'] = df['Total'] - df['Advance']
-        total_pending = df[df['Remaining'] > 0]['Remaining'].sum()
-        total_credit = abs(df[df['Remaining'] < 0]['Remaining'].sum())
 
-        # Metric Display
+        # 4. Display Metrics
         col1, col2, col3 = st.columns(3)
-        col1.metric("Available Balance (NPR)", f"Rs. {available_balance:,}", help="Total Cash/eSewa collected minus expenses")
-        col2.metric("Pending from Clients", f"Rs. {total_pending:,}", delta_color="inverse")
-        col3.metric("Client Credit", f"Rs. {total_credit:,}")
+        col1.metric("Available Cash", f"Rs. {available_balance:,}")
+        col2.metric("Pending from Clients", f"Rs. {total_pending:,}")
+        col3.metric("Total Expenses", f"Rs. {total_spent:,}")
 
         st.divider()
         st.subheader("Upcoming Shoot Schedule")
         upcoming = df[df['Type'] == "Shoot"].copy()
+        # Sorting logic for the new multi-event format
         upcoming['Sort_Date'] = pd.to_datetime(upcoming['Date'].apply(lambda x: str(x).split(', ')[0].split(' ')[0]), errors='coerce')
         upcoming = upcoming[upcoming['Sort_Date'] >= pd.Timestamp(date.today())].sort_values('Sort_Date')
         st.table(upcoming[['Date', 'Project', 'Total', 'Remaining']].head(5))
     else:
-        st.info("No data yet. Start by adding a booking or expense!")
+        st.info("No data yet. Start by adding a booking!")
 
 # --- TAB 2: NEW BOOKING ---
 # --- TAB 2: NEW BOOKING ---
@@ -147,18 +140,18 @@ with tab2:
                 st.rerun()
 # --- TAB 3: LEDGER (History) ---
 # --- TAB 3: LEDGER & EDIT (History) ---
+# --- TAB 3: LEDGER ---
 with tab3:
-    st.subheader("Transaction History & Editor")
+    st.subheader("Transaction Ledger")
     if not df.empty:
-        st.info("💡 You can double-click any cell below to edit it. You can also check the box on the far left of a row and press 'Delete' on your keyboard to remove a row.")
+        st.info("Double-click 'Final Payment' to record the remaining balance, then click Save below.")
         
-        # This creates the editable table
-        edited_df = st.data_editor(df, num_rows="dynamic", use_container_width=True)
+        # This makes the table editable
+        edited_df = st.data_editor(df, use_container_width=True, num_rows="dynamic")
         
-        # A button to save the changes back to Google Sheets
-        if st.button("💾 Save Edits to Cloud"):
+        if st.button("💾 Save Changes to Cloud"):
             conn.update(worksheet="Sheet1", data=edited_df)
-            st.success("Changes saved successfully!")
+            st.success("Database updated! Your Dashboard is now refreshed.")
             st.rerun()
     else:
         st.write("No transactions yet.")
