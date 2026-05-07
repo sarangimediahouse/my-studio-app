@@ -12,7 +12,7 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 # Load Data
 try:
-    df = conn.read(worksheet="Sheet1")
+    df = conn.read(worksheet="Sheet1", ttl=0)
     df = df.dropna(how="all")
 except:
     # Initialize sheet with these columns if empty
