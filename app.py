@@ -20,7 +20,7 @@ except:
     df = pd.DataFrame(columns=["Project", "Date", "Total", "Advance", "Method", "Expenses", "Type"])
 
 # --- TAB SECTIONS ---
-tab1, tab2, tab3, tab4 = st.tabs(["📊 Dashboard", "📅 New Booking", "📜 Ledger", "💸 Log Expense"])
+tab1, tab2, tab3, tab4 = st.tabs(["📊 Dashboard", "📅 New Booking", "📜 Ledger", "💸 Add Expense"])
 
 # --- TAB 1: DASHBOARD (Money Overview) ---
 # --- TAB 1: DASHBOARD (Money Overview) ---
@@ -157,18 +157,34 @@ with tab3:
         st.write("No transactions yet.")
 
 # --- TAB 4: LOG EXPENSE ---
+# --- TAB 4: ADD EXPENSES (Freelancers, Gear, etc.) ---
 with tab4:
-    st.subheader("Record an Expense")
+    st.subheader("Record an Expense / Freelancer Payment")
     with st.form("expense_form", clear_on_submit=True):
-        ex_name = st.text_input("What did you buy? (e.g., Petrol, Rental)")
-        ex_date = st.date_input("Date of Expense")
-        ex_amt = st.number_input("Amount Paid (NPR)", min_value=0)
-        ex_method = st.selectbox("Paid via", ["Cash", "eSewa", "Bank"])
+        # 1. Choose which project this expense is for
+        project_list = ["General / Office"] + list(df['Project'].unique())
+        selected_project = st.selectbox("Select Project", project_list)
         
-        if st.form_submit_button("Record Expense"):
-            # For expenses, 'Advance' is 0, 'Total' is 0, 'Expenses' is the value
-            new_ex = pd.DataFrame([{"Project": ex_name, "Date": str(ex_date), "Total": 0, "Advance": 0, "Method": ex_method, "Expenses": ex_amt, "Type": "Expense"}])
-            updated_df = pd.concat([df, new_ex], ignore_index=True)
+        # 2. Details of the payment
+        ex_desc = st.text_input("What is this for? (e.g. Freelance Editor: Rahul)")
+        ex_amount = st.number_input("Amount Paid (NPR)", min_value=0)
+        ex_date = st.date_input("Date Paid")
+        
+        if st.form_submit_button("Save Expense"):
+            # We save this as a new row with Type = 'Expense'
+            new_ex_row = pd.DataFrame([{
+                "Project": f"{selected_project}: {ex_desc}", 
+                "Date": str(ex_date),
+                "BS Date": str(nepali_datetime.date.from_datetime_date(ex_date)),
+                "Total": 0,
+                "Advance": 0,
+                "Final Payment": 0,
+                "Method": "Cash/eSewa",
+                "Expenses": ex_amount, # This puts the money in the Expense column
+                "Type": "Expense"
+            }])
+            
+            updated_df = pd.concat([df, new_ex_row], ignore_index=True)
             conn.update(worksheet="Sheet1", data=updated_df)
-            st.success("Expense deducted from balance!")
+            st.success(f"Recorded Rs. {ex_amount} expense for {selected_project}!")
             st.rerun()
