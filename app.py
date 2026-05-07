@@ -46,8 +46,8 @@ with tab1:
         st.divider()
         st.subheader("Upcoming Shoot Schedule")
         upcoming = df[df['Type'] == "Shoot"].copy()
-       upcoming['Sort_Date'] = pd.to_datetime(upcoming['Date'].apply(lambda x: str(x).split(', ')[0]), errors='coerce')
-upcoming = upcoming[upcoming['Sort_Date'] >= pd.Timestamp(date.today())].sort_values('Sort_Date')
+        upcoming['Sort_Date'] = pd.to_datetime(upcoming['Date'].apply(lambda x: str(x).split(', ')[0]), errors='coerce')
+        upcoming = upcoming[upcoming['Sort_Date'] >= pd.Timestamp(date.today())].sort_values('Sort_Date')
         st.table(upcoming[['Date', 'Project', 'Total', 'Remaining']].head(5))
     else:
         st.info("No data yet. Start by adding a booking or expense!")
