@@ -3,6 +3,17 @@ import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from datetime import date
+# --- YOUR BRANDING ---
+# This puts the logo in your internet browser tab
+st.set_page_config(page_title="Studio Manager", page_icon="sarangi.png", layout="wide")
+
+# This puts the logo in the top-left corner (like YouTube)
+st.logo("sarangi.png") 
+
+# Your main title
+st.title("My Studio Manager")
+st.write("---")
+# ---------------------
 
 # --- APP CONFIG ---
 st.set_page_config(page_title="Studio Pro + Balance", layout="wide")
