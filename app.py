@@ -173,44 +173,57 @@ with tab2:
 # --- TAB 3: LEDGER & EDIT (History) ---
 # --- TAB 3: LEDGER ---
 # --- TAB 3: LEDGER ---
+# --- TAB 3: LEDGER ---
 with tab3:
-    st.subheader("Transaction Ledger")
+    st.subheader("Transaction Ledgers")
     if not df.empty:
-        st.info("💡 Double-click 'Final Payment' to record the remaining balance, then click Save below.")
-        
-        # 1. Ensure numbers are treated correctly
+        # 1. Clean the numbers and sort by date
         df['Final Payment'] = pd.to_numeric(df.get('Final Payment', 0), errors='coerce').fillna(0)
-        
-        # 2. THE SORTING MAGIC
-        # Create a hidden column that snips out just the very first date string so Python can read it
         df['Secret_Sort'] = pd.to_datetime(df['Date'].apply(lambda x: str(x).split(', ')[0].split(' ')[0]), errors='coerce')
+        df = df.sort_values(by='Secret_Sort', ascending=True).drop(columns=['Secret_Sort'])
         
-        # Sort the data using that hidden date, delete the hidden column, and reset the row numbers
-        df = df.sort_values(by='Secret_Sort', ascending=True).drop(columns=['Secret_Sort']).reset_index(drop=True)
+        # 2. Create Sub-Tabs!
+        proj_tab, exp_tab = st.tabs(["📸 Project Ledger", "💸 Expense Ledger"])
         
-       # 3. Display the editable table WITH A DROPDOWN!
-        edited_df = st.data_editor(
-            df, 
-            num_rows="dynamic", 
-            use_container_width=True,
-            column_config={
-                "Status": st.column_config.SelectboxColumn(
-                    "Workflow Status",
-                    help="Double click to change project status",
-                    options=["Booked", "Shooting", "Editing", "Completed", "Delivered"]
-                )
-            }
-        )
+        with proj_tab:
+            st.info("💡 Double-click 'Final Payment' or 'Status' to update your projects.")
+            # Filter to show ONLY Shoots
+            proj_df = df[df['Type'] == 'Shoot'].reset_index(drop=True)
+            edited_proj = st.data_editor(
+                proj_df, 
+                num_rows="dynamic", 
+                use_container_width=True,
+                key="proj_table", # Needs a unique key!
+                column_config={
+                    "Status": st.column_config.SelectboxColumn(
+                        "Workflow Status",
+                        options=["Booked", "Shooting", "Editing", "Completed", "Delivered"]
+                    )
+                }
+            )
+            
+        with exp_tab:
+            st.info("💡 Edit or delete your recorded expenses here.")
+            # Filter to show ONLY Expenses
+            exp_df = df[df['Type'] == 'Expense'].reset_index(drop=True)
+            edited_exp = st.data_editor(
+                exp_df, 
+                num_rows="dynamic", 
+                use_container_width=True,
+                key="exp_table" # Needs a unique key!
+            )
         
-        # 4. Save button
-        if st.button("💾 Save Changes to Cloud"):
-            conn.update(worksheet="Sheet1", data=edited_df)
-            st.success("Changes saved! Your Google Sheet is now sorted too.")
+        st.divider()
+        
+        # 3. Save button (Saves both at the same time!)
+        if st.button("💾 Save All Changes to Cloud"):
+            # Put the two separate lists back together so Google Sheets understands it
+            updated_master_df = pd.concat([edited_proj, edited_exp], ignore_index=True)
+            conn.update(worksheet="Sheet1", data=updated_master_df)
+            st.success("Both Ledgers saved successfully!")
             st.rerun()
     else:
-        st.write("No transactions yet.")
-# --- TAB 4: LOG EXPENSE ---
-# --- TAB 4: ADD EXPENSES (Freelancers, Gear, etc.) ---
+        st.write("No transactions yet.")-
 with tab4:
     st.subheader("Record an Expense / Freelancer Payment")
     with st.form("expense_form", clear_on_submit=True):
