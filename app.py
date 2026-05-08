@@ -223,7 +223,7 @@ with tab3:
             st.success("Both Ledgers saved successfully!")
             st.rerun()
     else:
-        st.write("No transactions yet.")-
+        st.write("No transactions yet.")
 with tab4:
     st.subheader("Record an Expense / Freelancer Payment")
     with st.form("expense_form", clear_on_submit=True):
