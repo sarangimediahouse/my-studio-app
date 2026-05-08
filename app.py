@@ -34,9 +34,9 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Dashboard", "➕ New Booking", "�
 # --- TAB 1: DASHBOARD (Money Overview) ---
 # --- TAB 1: DASHBOARD (Money Overview) ---
 # --- TAB 1: DASHBOARD (Money Overview) ---
+# --- TAB 1: DASHBOARD (Money Overview) ---
 with tab1:
     if not df.empty:
-        # 1. Clean the data
         df['Advance'] = pd.to_numeric(df['Advance'], errors='coerce').fillna(0)
         final_col = 'Final Payment' if 'Final Payment' in df.columns else 'Final_Payment'
         df['Final Payment'] = pd.to_numeric(df.get(final_col, 0), errors='coerce').fillna(0)
@@ -44,7 +44,11 @@ with tab1:
         df['Total'] = pd.to_numeric(df['Total'], errors='coerce').fillna(0)
         df['Remaining'] = df['Total'] - (df['Advance'] + df['Final Payment'])
         
-        # --- NEW SAFETY RULE: Ignore Internal Transfers for total profit! ---
+        # --- NEW SAFETY NET: Protects your old data! ---
+        if 'Final Method' not in df.columns:
+            df['Final Method'] = df['Method']
+        # -----------------------------------------------
+        
         studio_df = df[df['Type'] != 'Transfer']
         
         total_collected = studio_df["Advance"].sum() + studio_df["Final Payment"].sum()
@@ -62,11 +66,11 @@ with tab1:
         st.subheader("🏦 Where is my money?")
         
         def get_method_balance(m_name):
-            # This forces an EXACT match, so accounts never cross over!
-            m_df = df[df['Method'].astype(str).str.strip() == m_name]
-            income = m_df['Advance'].sum() + m_df['Final Payment'].sum()
-            expense = m_df['Expenses'].sum()
-            return income - expense
+            # Accurately splits Advances and Final Payments!
+            adv_income = df[df['Method'].astype(str).str.strip() == m_name]['Advance'].sum()
+            fin_income = df[df['Final Method'].astype(str).str.strip() == m_name]['Final Payment'].sum()
+            expense = df[df['Method'].astype(str).str.strip() == m_name]['Expenses'].sum()
+            return (adv_income + fin_income) - expense
 
         w1, w2, w3 = st.columns(3)
         w1.metric("Cash Drawer", f"Rs. {get_method_balance('Cash'):,}")
@@ -173,6 +177,7 @@ with tab2:
 # --- TAB 3: LEDGER ---
 # --- TAB 3: LEDGER ---
 # --- TAB 3: LEDGER ---
+# --- TAB 3: LEDGER ---
 with tab3:
     st.subheader("Transaction Ledgers")
     if not df.empty:
@@ -180,12 +185,24 @@ with tab3:
         df['Secret_Sort'] = pd.to_datetime(df['Date'].apply(lambda x: str(x).split(', ')[0].split(' ')[0]), errors='coerce')
         df = df.sort_values(by='Secret_Sort', ascending=True).drop(columns=['Secret_Sort'])
         
-        # We now have 3 tabs!
+        if 'Final Method' not in df.columns:
+            df['Final Method'] = df['Method']
+            
         proj_tab, exp_tab, trans_tab = st.tabs(["📸 Projects", "💸 Expenses", "🔄 Transfers"])
         
         with proj_tab:
             proj_df = df[df['Type'] == 'Shoot'].reset_index(drop=True)
-            edited_proj = st.data_editor(proj_df, num_rows="dynamic", use_container_width=True, key="p_tab", column_config={"Status": st.column_config.SelectboxColumn("Status", options=["Booked", "Shooting", "Editing", "Completed", "Delivered"])})
+            edited_proj = st.data_editor(
+                proj_df, 
+                num_rows="dynamic", 
+                use_container_width=True, 
+                key="p_tab", 
+                column_config={
+                    "Status": st.column_config.SelectboxColumn("Status", options=["Booked", "Shooting", "Editing", "Completed", "Delivered"]),
+                    "Method": st.column_config.SelectboxColumn("Adv. Method", options=["Cash", "Bank", "eSewa"]),
+                    "Final Method": st.column_config.SelectboxColumn("Final Method", options=["Cash", "Bank", "eSewa"])
+                }
+            )
             
         with exp_tab:
             exp_df = df[df['Type'] == 'Expense'].reset_index(drop=True)
@@ -194,10 +211,7 @@ with tab3:
                 num_rows="dynamic", 
                 use_container_width=True, 
                 key="e_tab",
-                column_config={
-                    "Project": "Expense Details", 
-                    "Method": "Paid From (Account)" 
-                },
+                column_config={"Project": "Expense Details", "Method": "Paid From (Account)"},
                 column_order=["Date", "Project", "Method", "Expenses"] 
             )
             
@@ -207,7 +221,6 @@ with tab3:
         
         st.divider()
         if st.button("💾 Save All Ledgers"):
-            # Put them all back together safely!
             other_df = df[~df['Type'].isin(['Shoot', 'Expense', 'Transfer'])]
             updated_master_df = pd.concat([edited_proj, edited_exp, edited_trans, other_df], ignore_index=True)
             conn.update(worksheet="Sheet1", data=updated_master_df)
