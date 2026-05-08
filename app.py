@@ -35,6 +35,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Dashboard", "➕ New Booking", "�
 # --- TAB 1: DASHBOARD (Money Overview) ---
 # --- TAB 1: DASHBOARD (Money Overview) ---
 # --- TAB 1: DASHBOARD (Money Overview) ---
+# --- TAB 1: DASHBOARD (Money Overview) ---
 with tab1:
     if not df.empty:
         df['Advance'] = pd.to_numeric(df['Advance'], errors='coerce').fillna(0)
@@ -44,10 +45,11 @@ with tab1:
         df['Total'] = pd.to_numeric(df['Total'], errors='coerce').fillna(0)
         df['Remaining'] = df['Total'] - (df['Advance'] + df['Final Payment'])
         
-        # --- NEW SAFETY NET: Protects your old data! ---
+        # --- BLANK CELL FIX ---
         if 'Final Method' not in df.columns:
             df['Final Method'] = df['Method']
-        # -----------------------------------------------
+        df['Final Method'] = df['Final Method'].fillna(df['Method']) # Replaces voids with real data!
+        # ----------------------
         
         studio_df = df[df['Type'] != 'Transfer']
         
@@ -66,7 +68,6 @@ with tab1:
         st.subheader("🏦 Where is my money?")
         
         def get_method_balance(m_name):
-            # Accurately splits Advances and Final Payments!
             adv_income = df[df['Method'].astype(str).str.strip() == m_name]['Advance'].sum()
             fin_income = df[df['Final Method'].astype(str).str.strip() == m_name]['Final Payment'].sum()
             expense = df[df['Method'].astype(str).str.strip() == m_name]['Expenses'].sum()
@@ -161,6 +162,7 @@ with tab2:
                     "Advance": adv_val, 
                     "Final Payment": 0,  
                     "Method": method, 
+                    "Final Method": method, # <--- THIS FIXES THE BUG FOR NEW CLIENTS!
                     "Expenses": 0, 
                     "Type": "Shoot",
                     "Status": "Booked"
@@ -168,6 +170,7 @@ with tab2:
                 
                 updated_df = pd.concat([df, new_row], ignore_index=True)
                 conn.update(worksheet="Sheet1", data=updated_df)
+                st.cache_data.clear() # <--- FLUSHES MEMORY
                 st.success(f"Booking saved! 🇳🇵 BS Dates: {nep_date_str}")
                 st.rerun()
 # --- TAB 3: LEDGER (History) ---
@@ -179,19 +182,19 @@ with tab2:
 # --- TAB 3: LEDGER ---
 # --- TAB 3: LEDGER ---
 # --- TAB 3: LEDGER ---
+# --- TAB 3: LEDGER ---
 with tab3:
     st.subheader("Transaction Ledgers")
     if not df.empty:
-        # 1. Clean the numbers and sort by date
         df['Final Payment'] = pd.to_numeric(df.get('Final Payment', 0), errors='coerce').fillna(0)
         df['Secret_Sort'] = pd.to_datetime(df['Date'].apply(lambda x: str(x).split(', ')[0].split(' ')[0]), errors='coerce')
         df = df.sort_values(by='Secret_Sort', ascending=True).drop(columns=['Secret_Sort'])
         
-        # Safety Check: Ensure Final Method exists so the app doesn't crash
+        # --- BLANK CELL FIX ---
         if 'Final Method' not in df.columns:
             df['Final Method'] = df['Method']
+        df['Final Method'] = df['Final Method'].fillna(df['Method'])
             
-        # 2. Create the 3 Sub-Tabs
         proj_tab, exp_tab, trans_tab = st.tabs(["📸 Projects", "💸 Expenses", "🔄 Transfers"])
         
         with proj_tab:
@@ -206,7 +209,6 @@ with tab3:
                     "Method": st.column_config.SelectboxColumn("Adv. Method", options=["Cash", "Bank", "eSewa"]),
                     "Final Method": st.column_config.SelectboxColumn("Final Method", options=["Cash", "Bank", "eSewa"])
                 },
-                # This puts columns in perfect order and hides the rest!
                 column_order=["Project", "Date", "Total", "Advance", "Method", "Final Payment", "Final Method", "Remaining", "Status"]
             )
             
@@ -221,7 +223,6 @@ with tab3:
                     "Project": "Expense Details", 
                     "Method": "Paid From (Account)"
                 },
-                # Hides extra math columns for expenses
                 column_order=["Date", "Project", "Method", "Expenses"] 
             )
             
@@ -236,16 +237,14 @@ with tab3:
         
         st.divider()
         
-        # 3. The Master Save Button
         if st.button("💾 Save All Ledgers"):
-            # Grab any data that isn't a Shoot, Expense, or Transfer so it isn't lost
             other_df = df[~df['Type'].isin(['Shoot', 'Expense', 'Transfer'])]
-            
-            # Glue everything back together
             updated_master_df = pd.concat([edited_proj, edited_exp, edited_trans, other_df], ignore_index=True)
-            
-            # Save to Google Sheets
             conn.update(worksheet="Sheet1", data=updated_master_df)
+            
+            # --- CACHE GHOST FIX ---
+            st.cache_data.clear() # Forces the app to instantly read the new data!
+            
             st.success("Ledgers saved successfully!")
             st.rerun()
     else:
