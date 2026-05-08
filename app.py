@@ -49,7 +49,8 @@ with tab1:
         total_collected = studio_df["Advance"].sum() + studio_df["Final Payment"].sum()
         total_spent = studio_df["Expenses"].sum()
         available_balance = total_collected - total_spent
-        total_pending = studio_df[studio_df['Remaining'] > 0]['Remaining'].sum()
+        # This forces the app to ONLY count pending money from official Shoots
+        total_pending = df[(df['Type'] == 'Shoot') & (df['Remaining'] > 0)]['Remaining'].sum()
 
         st.subheader("💰 Studio Overview")
         col1, col2, col3 = st.columns(3)
