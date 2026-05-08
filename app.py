@@ -72,7 +72,21 @@ with tab1:
         w3.metric("eSewa", f"Rs. {get_method_balance('eSewa'):,}")
 
         # ==========================================
-        # 📈 NEW: ADVANCED CASH FLOW CHART
+        # 📅 MOVED UP: UPCOMING SHOOT SCHEDULE
+        # ==========================================
+        st.divider()
+        st.subheader("📅 Upcoming Shoot Schedule")
+        upcoming = df[df['Type'] == "Shoot"].copy()
+        
+        if 'Status' not in upcoming.columns:
+            upcoming['Status'] = "Booked"
+            
+        upcoming['Sort_Date'] = pd.to_datetime(upcoming['Date'].apply(lambda x: str(x).split(', ')[0].split(' ')[0]), errors='coerce')
+        upcoming = upcoming[upcoming['Sort_Date'] >= pd.Timestamp(date.today())].sort_values('Sort_Date')
+        st.table(upcoming[['Date', 'Project', 'Status', 'Total', 'Remaining']].head(5))
+
+        # ==========================================
+        # 📈 MOVED DOWN: ADVANCED CASH FLOW CHART
         # ==========================================
         st.divider()
         st.subheader("📈 Monthly Cash Flow & Profit")
@@ -125,16 +139,6 @@ with tab1:
             st.info("Not enough dated entries to generate a chart yet!")
         # ==========================================
 
-        st.divider()
-        st.subheader("📅 Upcoming Shoot Schedule")
-        upcoming = df[df['Type'] == "Shoot"].copy()
-        
-        if 'Status' not in upcoming.columns:
-            upcoming['Status'] = "Booked"
-            
-        upcoming['Sort_Date'] = pd.to_datetime(upcoming['Date'].apply(lambda x: str(x).split(', ')[0].split(' ')[0]), errors='coerce')
-        upcoming = upcoming[upcoming['Sort_Date'] >= pd.Timestamp(date.today())].sort_values('Sort_Date')
-        st.table(upcoming[['Date', 'Project', 'Status', 'Total', 'Remaining']].head(5))
     else:
         st.info("No data yet. Start by adding a booking!")
 
