@@ -185,10 +185,21 @@ with tab3:
         with proj_tab:
             proj_df = df[df['Type'] == 'Shoot'].reset_index(drop=True)
             edited_proj = st.data_editor(proj_df, num_rows="dynamic", use_container_width=True, key="p_tab", column_config={"Status": st.column_config.SelectboxColumn("Status", options=["Booked", "Shooting", "Editing", "Completed", "Delivered"])})
-            
-        with exp_tab:
+       with exp_tab:
             exp_df = df[df['Type'] == 'Expense'].reset_index(drop=True)
-            edited_exp = st.data_editor(exp_df, num_rows="dynamic", use_container_width=True, key="e_tab")
+            edited_exp = st.data_editor(
+                exp_df, 
+                num_rows="dynamic", 
+                use_container_width=True, 
+                key="e_tab",
+                # This renames the columns just for this screen
+                column_config={
+                    "Project": "Expense Details", 
+                    "Method": "Paid From (Account)" 
+                },
+                # THIS IS THE MAGIC: It hides the useless columns (Total, Advance, etc.)!
+                column_order=["Date", "Project", "Method", "Expenses"] 
+            )
             
         with trans_tab:
             trans_df = df[df['Type'] == 'Transfer'].reset_index(drop=True)
@@ -204,36 +215,39 @@ with tab3:
             st.rerun()
     else:
         st.write("No transactions yet.")
+# --- TAB 4: ADD EXPENSES ---
 with tab4:
-    st.subheader("Record an Expense / Freelancer Payment")
+    st.subheader("💸 Record an Expense")
     with st.form("expense_form", clear_on_submit=True):
-        # 1. Choose which project this expense is for
-        project_list = ["General / Office"] + list(df['Project'].unique())
-        selected_project = st.selectbox("Select Project", project_list)
         
-        # 2. Details of the payment
-        ex_desc = st.text_input("What is this for? (e.g. Freelance Editor: Rahul)")
-        ex_amount = st.number_input("Amount Paid (NPR)", min_value=0)
-        ex_date = st.date_input("Date Paid")
+        # No more projects! Just a simple description.
+        ex_desc = st.text_input("What is this expense for?", placeholder="e.g. SD Card, Studio Rent, Editing")
+        ex_amount = st.number_input("Amount Paid (NPR)", min_value=1)
+        
+        c1, c2 = st.columns(2)
+        ex_date = c1.date_input("Date Paid")
+        # Here is your Cash/Bank/eSewa selector!
+        ex_method = c2.selectbox("Paid From", ["Cash", "Bank", "eSewa"]) 
         
         if st.form_submit_button("Save Expense"):
-            # We save this as a new row with Type = 'Expense'
-            new_ex_row = pd.DataFrame([{
-                "Project": f"{selected_project}: {ex_desc}", 
-                "Date": str(ex_date),
-                "BS Date": str(nepali_datetime.date.from_datetime_date(ex_date)),
-                "Total": 0,
-                "Advance": 0,
-                "Final Payment": 0,
-                "Method": "Cash/eSewa",
-                "Expenses": ex_amount, # This puts the money in the Expense column
-                "Type": "Expense"
-            }])
-            
-            updated_df = pd.concat([df, new_ex_row], ignore_index=True)
-            conn.update(worksheet="Sheet1", data=updated_df)
-            st.success(f"Recorded Rs. {ex_amount} expense for {selected_project}!")
-            st.rerun()
+            if not ex_desc:
+                st.error("⚠️ Please write down what this expense was for!")
+            else:
+                new_ex_row = pd.DataFrame([{
+                    "Project": ex_desc, # We save the description here so it doesn't leave a blank space in Google Sheets
+                    "Date": str(ex_date),
+                    "BS Date": str(nepali_datetime.date.from_datetime_date(ex_date)),
+                    "Total": 0, "Advance": 0, "Final Payment": 0,
+                    "Method": ex_method, # Saves exactly which wallet you used
+                    "Expenses": ex_amount, 
+                    "Type": "Expense",
+                    "Status": "Completed"
+                }])
+                
+                updated_df = pd.concat([df, new_ex_row], ignore_index=True)
+                conn.update(worksheet="Sheet1", data=updated_df)
+                st.success(f"Recorded Rs. {ex_amount} expense paid from {ex_method}!")
+                st.rerun()
             # --- TAB 5: TRANSFER MONEY ---
 with tab5:
     st.subheader("🔄 Transfer Money Between Accounts")
