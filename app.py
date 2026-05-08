@@ -63,7 +63,7 @@ with tab1:
         # Sorting logic for the new multi-event format
         upcoming['Sort_Date'] = pd.to_datetime(upcoming['Date'].apply(lambda x: str(x).split(', ')[0].split(' ')[0]), errors='coerce')
         upcoming = upcoming[upcoming['Sort_Date'] >= pd.Timestamp(date.today())].sort_values('Sort_Date')
-        st.table(upcoming[['Date', 'Project', 'Total', 'Remaining']].head(5))
+        st.table(upcoming[['Date', 'Project', 'Status', 'Total', 'Remaining']].head(5))
     else:
         st.info("No data yet. Start by adding a booking!")
 
@@ -130,16 +130,17 @@ with tab2:
                 eng_date_str = ", ".join(eng_dates)
                 nep_date_str = ", ".join(nep_dates)
                 
-                new_row = pd.DataFrame([{
+               new_row = pd.DataFrame([{
                     "Project": name, 
                     "Date": eng_date_str, 
                     "BS Date": nep_date_str, 
                     "Total": total_val, 
                     "Advance": adv_val, 
-                    "Final Payment": 0,  # <--- Here is the new line safely tucked inside!
+                    "Final Payment": 0,  
                     "Method": method, 
                     "Expenses": 0, 
-                    "Type": "Shoot"
+                    "Type": "Shoot",
+                    "Status": "Booked" # <--- ADD THIS EXACT LINE!
                 }])
                 
                 updated_df = pd.concat([df, new_row], ignore_index=True)
@@ -165,8 +166,19 @@ with tab3:
         # Sort the data using that hidden date, delete the hidden column, and reset the row numbers
         df = df.sort_values(by='Secret_Sort', ascending=True).drop(columns=['Secret_Sort']).reset_index(drop=True)
         
-        # 3. Display the editable table
-        edited_df = st.data_editor(df, num_rows="dynamic", use_container_width=True)
+       # 3. Display the editable table WITH A DROPDOWN!
+        edited_df = st.data_editor(
+            df, 
+            num_rows="dynamic", 
+            use_container_width=True,
+            column_config={
+                "Status": st.column_config.SelectboxColumn(
+                    "Workflow Status",
+                    help="Double click to change project status",
+                    options=["Booked", "Shooting", "Editing", "Completed", "Delivered"]
+                )
+            }
+        )
         
         # 4. Save button
         if st.button("💾 Save Changes to Cloud"):
