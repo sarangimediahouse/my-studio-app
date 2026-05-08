@@ -36,8 +36,10 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Dashboard", "➕ New Booking", "�
 # --- TAB 1: DASHBOARD (Money Overview) ---
 # --- TAB 1: DASHBOARD (Money Overview) ---
 # --- TAB 1: DASHBOARD (Money Overview) ---
+# --- TAB 1: DASHBOARD (Money Overview) ---
 with tab1:
     if not df.empty:
+        # 1. Clean the data
         df['Advance'] = pd.to_numeric(df['Advance'], errors='coerce').fillna(0)
         final_col = 'Final Payment' if 'Final Payment' in df.columns else 'Final_Payment'
         df['Final Payment'] = pd.to_numeric(df.get(final_col, 0), errors='coerce').fillna(0)
@@ -45,11 +47,9 @@ with tab1:
         df['Total'] = pd.to_numeric(df['Total'], errors='coerce').fillna(0)
         df['Remaining'] = df['Total'] - (df['Advance'] + df['Final Payment'])
         
-        # --- BLANK CELL FIX ---
         if 'Final Method' not in df.columns:
             df['Final Method'] = df['Method']
-        df['Final Method'] = df['Final Method'].fillna(df['Method']) # Replaces voids with real data!
-        # ----------------------
+        df['Final Method'] = df['Final Method'].fillna(df['Method'])
         
         studio_df = df[df['Type'] != 'Transfer']
         
@@ -77,6 +77,34 @@ with tab1:
         w1.metric("Cash Drawer", f"Rs. {get_method_balance('Cash'):,}")
         w2.metric("Bank Account", f"Rs. {get_method_balance('Bank'):,}")
         w3.metric("eSewa", f"Rs. {get_method_balance('eSewa'):,}")
+
+        # ==========================================
+        # 📈 NEW: MONTHLY CASH FLOW CHART
+        # ==========================================
+        st.divider()
+        st.subheader("📈 Monthly Cash Flow")
+        
+        # Create a safe copy of the data (ignoring wallet transfers)
+        chart_data = df[df['Type'] != 'Transfer'].copy()
+        
+        # Extract the real date so the chart can understand it
+        chart_data['Real_Date'] = pd.to_datetime(chart_data['Date'].apply(lambda x: str(x).split(', ')[0].split(' ')[0]), errors='coerce')
+        chart_data = chart_data.dropna(subset=['Real_Date'])
+        
+        if not chart_data.empty:
+            # Group by Year and Month (e.g., "2026-05")
+            chart_data['Month'] = chart_data['Real_Date'].dt.strftime('%Y-%m')
+            chart_data['Total_Income'] = chart_data['Advance'] + chart_data['Final Payment']
+            
+            # Crush the math down into monthly totals
+            monthly_summary = chart_data.groupby('Month')[['Total_Income', 'Expenses']].sum()
+            monthly_summary = monthly_summary.rename(columns={'Total_Income': 'Income', 'Expenses': 'Expenses'})
+            
+            # Display the interactive chart!
+            st.bar_chart(monthly_summary)
+        else:
+            st.info("Not enough dated entries to generate a chart yet!")
+        # ==========================================
 
         st.divider()
         st.subheader("📅 Upcoming Shoot Schedule")
