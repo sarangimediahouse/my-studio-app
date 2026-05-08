@@ -31,15 +31,8 @@ except:
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Dashboard", "➕ New Booking", "📜 Ledger", "💸 Add Expense", "🔄 Transfer"])
 
 # --- TAB 1: DASHBOARD (Money Overview) ---
-# --- TAB 1: DASHBOARD (Money Overview) ---
-# --- TAB 1: DASHBOARD (Money Overview) ---
-# --- TAB 1: DASHBOARD (Money Overview) ---
-# --- TAB 1: DASHBOARD (Money Overview) ---
-# --- TAB 1: DASHBOARD (Money Overview) ---
-# --- TAB 1: DASHBOARD (Money Overview) ---
 with tab1:
     if not df.empty:
-        # 1. Clean the data
         df['Advance'] = pd.to_numeric(df['Advance'], errors='coerce').fillna(0)
         final_col = 'Final Payment' if 'Final Payment' in df.columns else 'Final_Payment'
         df['Final Payment'] = pd.to_numeric(df.get(final_col, 0), errors='coerce').fillna(0)
@@ -79,29 +72,55 @@ with tab1:
         w3.metric("eSewa", f"Rs. {get_method_balance('eSewa'):,}")
 
         # ==========================================
-        # 📈 NEW: MONTHLY CASH FLOW CHART
+        # 📈 NEW: ADVANCED CASH FLOW CHART
         # ==========================================
         st.divider()
-        st.subheader("📈 Monthly Cash Flow")
+        st.subheader("📈 Monthly Cash Flow & Profit")
         
-        # Create a safe copy of the data (ignoring wallet transfers)
+        # 1. Prepare the data
         chart_data = df[df['Type'] != 'Transfer'].copy()
-        
-        # Extract the real date so the chart can understand it
         chart_data['Real_Date'] = pd.to_datetime(chart_data['Date'].apply(lambda x: str(x).split(', ')[0].split(' ')[0]), errors='coerce')
         chart_data = chart_data.dropna(subset=['Real_Date'])
         
         if not chart_data.empty:
-            # Group by Year and Month (e.g., "2026-05")
-            chart_data['Month'] = chart_data['Real_Date'].dt.strftime('%Y-%m')
-            chart_data['Total_Income'] = chart_data['Advance'] + chart_data['Final Payment']
+            chart_data['Month_Name'] = chart_data['Real_Date'].dt.strftime('%B %Y') # "May 2026"
+            chart_data['Sort_Month'] = chart_data['Real_Date'].dt.strftime('%Y-%m') # "2026-05"
+            chart_data['Income'] = chart_data['Advance'] + chart_data['Final Payment']
             
             # Crush the math down into monthly totals
-            monthly_summary = chart_data.groupby('Month')[['Total_Income', 'Expenses']].sum()
-            monthly_summary = monthly_summary.rename(columns={'Total_Income': 'Income', 'Expenses': 'Expenses'})
+            monthly_summary = chart_data.groupby(['Sort_Month', 'Month_Name'])[['Income', 'Expenses']].sum().reset_index()
+            monthly_summary = monthly_summary.sort_values('Sort_Month')
+            monthly_summary['Net Profit'] = monthly_summary['Income'] - monthly_summary['Expenses']
             
-            # Display the interactive chart!
-            st.bar_chart(monthly_summary)
+            # 2. Add the easy Month Tracker dropdown
+            all_months = monthly_summary['Month_Name'].tolist()
+            selected_months = st.multiselect("📅 Select Months to View", options=all_months, default=all_months[-6:] if len(all_months) > 6 else all_months)
+            
+            if selected_months:
+                filtered_data = monthly_summary[monthly_summary['Month_Name'].isin(selected_months)]
+                
+                # 3. Draw the Custom Plotly Chart
+                import plotly.graph_objects as go
+                fig = go.Figure()
+                
+                # Light Blue Bar: Income
+                fig.add_trace(go.Bar(x=filtered_data['Month_Name'], y=filtered_data['Income'], name='Income', marker_color='#00b4d8'))
+                # Dark Blue Bar: Expenses
+                fig.add_trace(go.Bar(x=filtered_data['Month_Name'], y=filtered_data['Expenses'], name='Expenses', marker_color='#0077b6'))
+                # Curvy Red Line: Net Profit (shape='spline' makes the curve!)
+                fig.add_trace(go.Scatter(x=filtered_data['Month_Name'], y=filtered_data['Net Profit'], name='Net Profit', mode='lines+markers', line=dict(color='#ef233c', width=3, shape='spline')))
+                
+                # Make it look clean
+                fig.update_layout(
+                    barmode='group', # Puts bars side-by-side
+                    hovermode="x unified", # Shows all 3 numbers when you hover
+                    margin=dict(l=0, r=0, t=30, b=0),
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                )
+                
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.warning("⚠️ Please select at least one month to view the chart.")
         else:
             st.info("Not enough dated entries to generate a chart yet!")
         # ==========================================
