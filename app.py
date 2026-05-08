@@ -72,6 +72,7 @@ with tab1:
 # --- TAB 2: NEW BOOKING ---
 # --- TAB 2: NEW BOOKING ---
 # --- TAB 2: NEW BOOKING ---
+# --- TAB 2: NEW BOOKING ---
 with tab2:
     st.subheader("Add New Shoot & Advance")
     with st.form("shoot_form", clear_on_submit=True):
@@ -105,9 +106,9 @@ with tab2:
         c1, c2 = st.columns(2)
         total_val = c1.number_input("Full Project Price (NPR)", min_value=0)
         adv_val = c2.number_input("Advance/Deposit Paid (NPR)", min_value=0)
-        method = st.selectbox("Payment Method", ["eSewa", "Fonepay", "Cash", "Bank"])
+        method = st.selectbox("Payment Method", ["Cash", "Bank", "eSewa"])
         
-       if st.form_submit_button("Save Booking"):
+        if st.form_submit_button("Save Booking"):
             # Group the events the user actually selected
             events = [(n1, d1), (n2, d2), (n3, d3), (n4, d4), (n5, d5)]
             valid_events = [e for e in events if e[1] is not None]
