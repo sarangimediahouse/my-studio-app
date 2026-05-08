@@ -172,6 +172,7 @@ with tab2:
 # --- TAB 3: LEDGER ---
 # --- TAB 3: LEDGER ---
 # --- TAB 3: LEDGER ---
+# --- TAB 3: LEDGER ---
 with tab3:
     st.subheader("Transaction Ledgers")
     if not df.empty:
@@ -185,19 +186,18 @@ with tab3:
         with proj_tab:
             proj_df = df[df['Type'] == 'Shoot'].reset_index(drop=True)
             edited_proj = st.data_editor(proj_df, num_rows="dynamic", use_container_width=True, key="p_tab", column_config={"Status": st.column_config.SelectboxColumn("Status", options=["Booked", "Shooting", "Editing", "Completed", "Delivered"])})
-       with exp_tab:
+            
+        with exp_tab:
             exp_df = df[df['Type'] == 'Expense'].reset_index(drop=True)
             edited_exp = st.data_editor(
                 exp_df, 
                 num_rows="dynamic", 
                 use_container_width=True, 
                 key="e_tab",
-                # This renames the columns just for this screen
                 column_config={
                     "Project": "Expense Details", 
                     "Method": "Paid From (Account)" 
                 },
-                # THIS IS THE MAGIC: It hides the useless columns (Total, Advance, etc.)!
                 column_order=["Date", "Project", "Method", "Expenses"] 
             )
             
