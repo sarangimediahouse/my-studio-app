@@ -28,37 +28,36 @@ except:
     df = pd.DataFrame(columns=["Project", "Date", "Total", "Advance", "Method", "Expenses", "Type"])
 
 # --- TAB SECTIONS ---
-tab1, tab2, tab3, tab4 = st.tabs(["📊 Dashboard", "📅 New Booking", "📜 Ledger", "💸 Add Expense"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Dashboard", "➕ New Booking", "📜 Ledger", "💸 Add Expense", "🔄 Transfer"])
 
+# --- TAB 1: DASHBOARD (Money Overview) ---
 # --- TAB 1: DASHBOARD (Money Overview) ---
 # --- TAB 1: DASHBOARD (Money Overview) ---
 # --- TAB 1: DASHBOARD (Money Overview) ---
 with tab1:
     if not df.empty:
-        # 1. Clean the data 
+        # 1. Clean the data
         df['Advance'] = pd.to_numeric(df['Advance'], errors='coerce').fillna(0)
         final_col = 'Final Payment' if 'Final Payment' in df.columns else 'Final_Payment'
         df['Final Payment'] = pd.to_numeric(df.get(final_col, 0), errors='coerce').fillna(0)
         df['Expenses'] = pd.to_numeric(df['Expenses'], errors='coerce').fillna(0)
         df['Total'] = pd.to_numeric(df['Total'], errors='coerce').fillna(0)
-
-        # 2. Calculate Finance Metrics 
-        total_collected = df["Advance"].sum() + df["Final Payment"].sum()
-        total_spent = df["Expenses"].sum()
-        available_balance = total_collected - total_spent
-        
-        # 3. Calculate Pending Money
         df['Remaining'] = df['Total'] - (df['Advance'] + df['Final Payment'])
-        total_pending = df[df['Remaining'] > 0]['Remaining'].sum()
+        
+        # --- NEW SAFETY RULE: Ignore Internal Transfers for total profit! ---
+        studio_df = df[df['Type'] != 'Transfer']
+        
+        total_collected = studio_df["Advance"].sum() + studio_df["Final Payment"].sum()
+        total_spent = studio_df["Expenses"].sum()
+        available_balance = total_collected - total_spent
+        total_pending = studio_df[studio_df['Remaining'] > 0]['Remaining'].sum()
 
-        # 4. MAIN METRICS DISPLAY
         st.subheader("💰 Studio Overview")
         col1, col2, col3 = st.columns(3)
         col1.metric("Total Available Cash", f"Rs. {available_balance:,}")
         col2.metric("Pending from Clients", f"Rs. {total_pending:,}")
         col3.metric("Total Expenses", f"Rs. {total_spent:,}")
 
-        # --- WALLET BREAKDOWN ---
         st.divider()
         st.subheader("🏦 Where is my money?")
         
@@ -72,17 +71,14 @@ with tab1:
         w1.metric("Cash Drawer", f"Rs. {get_method_balance('Cash'):,}")
         w2.metric("Bank Account", f"Rs. {get_method_balance('Bank'):,}")
         w3.metric("eSewa", f"Rs. {get_method_balance('eSewa'):,}")
-        # -----------------------------
 
         st.divider()
         st.subheader("📅 Upcoming Shoot Schedule")
         upcoming = df[df['Type'] == "Shoot"].copy()
         
-        # --- THE SAFETY NET IS RIGHT HERE ---
         if 'Status' not in upcoming.columns:
             upcoming['Status'] = "Booked"
-        # ------------------------------------
-        
+            
         upcoming['Sort_Date'] = pd.to_datetime(upcoming['Date'].apply(lambda x: str(x).split(', ')[0].split(' ')[0]), errors='coerce')
         upcoming = upcoming[upcoming['Sort_Date'] >= pd.Timestamp(date.today())].sort_values('Sort_Date')
         st.table(upcoming[['Date', 'Project', 'Status', 'Total', 'Remaining']].head(5))
@@ -174,53 +170,36 @@ with tab2:
 # --- TAB 3: LEDGER ---
 # --- TAB 3: LEDGER ---
 # --- TAB 3: LEDGER ---
+# --- TAB 3: LEDGER ---
 with tab3:
     st.subheader("Transaction Ledgers")
     if not df.empty:
-        # 1. Clean the numbers and sort by date
         df['Final Payment'] = pd.to_numeric(df.get('Final Payment', 0), errors='coerce').fillna(0)
         df['Secret_Sort'] = pd.to_datetime(df['Date'].apply(lambda x: str(x).split(', ')[0].split(' ')[0]), errors='coerce')
         df = df.sort_values(by='Secret_Sort', ascending=True).drop(columns=['Secret_Sort'])
         
-        # 2. Create Sub-Tabs!
-        proj_tab, exp_tab = st.tabs(["📸 Project Ledger", "💸 Expense Ledger"])
+        # We now have 3 tabs!
+        proj_tab, exp_tab, trans_tab = st.tabs(["📸 Projects", "💸 Expenses", "🔄 Transfers"])
         
         with proj_tab:
-            st.info("💡 Double-click 'Final Payment' or 'Status' to update your projects.")
-            # Filter to show ONLY Shoots
             proj_df = df[df['Type'] == 'Shoot'].reset_index(drop=True)
-            edited_proj = st.data_editor(
-                proj_df, 
-                num_rows="dynamic", 
-                use_container_width=True,
-                key="proj_table", # Needs a unique key!
-                column_config={
-                    "Status": st.column_config.SelectboxColumn(
-                        "Workflow Status",
-                        options=["Booked", "Shooting", "Editing", "Completed", "Delivered"]
-                    )
-                }
-            )
+            edited_proj = st.data_editor(proj_df, num_rows="dynamic", use_container_width=True, key="p_tab", column_config={"Status": st.column_config.SelectboxColumn("Status", options=["Booked", "Shooting", "Editing", "Completed", "Delivered"])})
             
         with exp_tab:
-            st.info("💡 Edit or delete your recorded expenses here.")
-            # Filter to show ONLY Expenses
             exp_df = df[df['Type'] == 'Expense'].reset_index(drop=True)
-            edited_exp = st.data_editor(
-                exp_df, 
-                num_rows="dynamic", 
-                use_container_width=True,
-                key="exp_table" # Needs a unique key!
-            )
+            edited_exp = st.data_editor(exp_df, num_rows="dynamic", use_container_width=True, key="e_tab")
+            
+        with trans_tab:
+            trans_df = df[df['Type'] == 'Transfer'].reset_index(drop=True)
+            edited_trans = st.data_editor(trans_df, num_rows="dynamic", use_container_width=True, key="t_tab")
         
         st.divider()
-        
-        # 3. Save button (Saves both at the same time!)
-        if st.button("💾 Save All Changes to Cloud"):
-            # Put the two separate lists back together so Google Sheets understands it
-            updated_master_df = pd.concat([edited_proj, edited_exp], ignore_index=True)
+        if st.button("💾 Save All Ledgers"):
+            # Put them all back together safely!
+            other_df = df[~df['Type'].isin(['Shoot', 'Expense', 'Transfer'])]
+            updated_master_df = pd.concat([edited_proj, edited_exp, edited_trans, other_df], ignore_index=True)
             conn.update(worksheet="Sheet1", data=updated_master_df)
-            st.success("Both Ledgers saved successfully!")
+            st.success("Ledgers saved successfully!")
             st.rerun()
     else:
         st.write("No transactions yet.")
@@ -254,3 +233,48 @@ with tab4:
             conn.update(worksheet="Sheet1", data=updated_df)
             st.success(f"Recorded Rs. {ex_amount} expense for {selected_project}!")
             st.rerun()
+            # --- TAB 5: TRANSFER MONEY ---
+with tab5:
+    st.subheader("🔄 Transfer Money Between Accounts")
+    with st.form("transfer_form", clear_on_submit=True):
+        c1, c2 = st.columns(2)
+        from_acc = c1.selectbox("Withdraw From", ["Bank", "eSewa", "Cash"])
+        to_acc = c2.selectbox("Deposit To", ["Cash", "Bank", "eSewa"])
+        
+        t_amount = st.number_input("Amount to Transfer (NPR)", min_value=1)
+        t_date = st.date_input("Transfer Date")
+        t_desc = st.text_input("Note (e.g., ATM Withdrawal)")
+        
+        if st.form_submit_button("Transfer Funds"):
+            if from_acc == to_acc:
+                st.error("⚠️ You cannot transfer money to the same account!")
+            else:
+                # Row 1: The Withdrawal (Deducts from the first account)
+                row_out = pd.DataFrame([{
+                    "Project": f"Transfer: {from_acc} to {to_acc} ({t_desc})",
+                    "Date": str(t_date),
+                    "BS Date": str(nepali_datetime.date.from_datetime_date(t_date)),
+                    "Total": 0, "Advance": 0, "Final Payment": 0,
+                    "Method": from_acc,
+                    "Expenses": t_amount,
+                    "Type": "Transfer",
+                    "Status": "Completed"
+                }])
+                
+                # Row 2: The Deposit (Adds to the second account)
+                row_in = pd.DataFrame([{
+                    "Project": f"Transfer: {from_acc} to {to_acc} ({t_desc})",
+                    "Date": str(t_date),
+                    "BS Date": str(nepali_datetime.date.from_datetime_date(t_date)),
+                    "Total": 0, "Advance": t_amount, "Final Payment": 0,
+                    "Method": to_acc,
+                    "Expenses": 0,
+                    "Type": "Transfer",
+                    "Status": "Completed"
+                }])
+                
+                # Save both rows to Google Sheets
+                updated_df = pd.concat([df, row_out, row_in], ignore_index=True)
+                conn.update(worksheet="Sheet1", data=updated_df)
+                st.success(f"Transferred Rs. {t_amount} from {from_acc} to {to_acc}!")
+                st.rerun()
