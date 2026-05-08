@@ -32,17 +32,17 @@ tab1, tab2, tab3, tab4 = st.tabs(["📊 Dashboard", "📅 New Booking", "📜 Le
 
 # --- TAB 1: DASHBOARD (Money Overview) ---
 # --- TAB 1: DASHBOARD (Money Overview) ---
+# --- TAB 1: DASHBOARD (Money Overview) ---
 with tab1:
     if not df.empty:
-        # 1. Clean the data (convert text to numbers so math works)
+        # 1. Clean the data 
         df['Advance'] = pd.to_numeric(df['Advance'], errors='coerce').fillna(0)
-        # We use .get() just in case the column name has a tiny typo
         final_col = 'Final Payment' if 'Final Payment' in df.columns else 'Final_Payment'
         df['Final Payment'] = pd.to_numeric(df.get(final_col, 0), errors='coerce').fillna(0)
         df['Expenses'] = pd.to_numeric(df['Expenses'], errors='coerce').fillna(0)
         df['Total'] = pd.to_numeric(df['Total'], errors='coerce').fillna(0)
 
-        # 2. Calculate Finance Metrics (Advance + Final Payment = Total Cash)
+        # 2. Calculate Finance Metrics 
         total_collected = df["Advance"].sum() + df["Final Payment"].sum()
         total_spent = df["Expenses"].sum()
         available_balance = total_collected - total_spent
@@ -51,16 +51,38 @@ with tab1:
         df['Remaining'] = df['Total'] - (df['Advance'] + df['Final Payment'])
         total_pending = df[df['Remaining'] > 0]['Remaining'].sum()
 
-        # 4. Display Metrics
+        # 4. MAIN METRICS DISPLAY
+        st.subheader("💰 Studio Overview")
         col1, col2, col3 = st.columns(3)
-        col1.metric("Available Cash", f"Rs. {available_balance:,}")
+        col1.metric("Total Available Cash", f"Rs. {available_balance:,}")
         col2.metric("Pending from Clients", f"Rs. {total_pending:,}")
         col3.metric("Total Expenses", f"Rs. {total_spent:,}")
 
+        # --- WALLET BREAKDOWN ---
         st.divider()
-        st.subheader("Upcoming Shoot Schedule")
+        st.subheader("🏦 Where is my money?")
+        
+        def get_method_balance(m_name):
+            m_df = df[df['Method'].astype(str).str.contains(m_name, na=False, case=False)]
+            income = m_df['Advance'].sum() + m_df['Final Payment'].sum()
+            expense = m_df['Expenses'].sum()
+            return income - expense
+
+        w1, w2, w3 = st.columns(3)
+        w1.metric("Cash Drawer", f"Rs. {get_method_balance('Cash'):,}")
+        w2.metric("Bank Account", f"Rs. {get_method_balance('Bank'):,}")
+        w3.metric("eSewa", f"Rs. {get_method_balance('eSewa'):,}")
+        # -----------------------------
+
+        st.divider()
+        st.subheader("📅 Upcoming Shoot Schedule")
         upcoming = df[df['Type'] == "Shoot"].copy()
-        # Sorting logic for the new multi-event format
+        
+        # --- THE SAFETY NET IS RIGHT HERE ---
+        if 'Status' not in upcoming.columns:
+            upcoming['Status'] = "Booked"
+        # ------------------------------------
+        
         upcoming['Sort_Date'] = pd.to_datetime(upcoming['Date'].apply(lambda x: str(x).split(', ')[0].split(' ')[0]), errors='coerce')
         upcoming = upcoming[upcoming['Sort_Date'] >= pd.Timestamp(date.today())].sort_values('Sort_Date')
         st.table(upcoming[['Date', 'Project', 'Status', 'Total', 'Remaining']].head(5))
