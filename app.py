@@ -61,8 +61,9 @@ with tab1:
         st.divider()
         st.subheader("🏦 Where is my money?")
         
-        def get_method_balance(m_name):
-            m_df = df[df['Method'].astype(str).str.contains(m_name, na=False, case=False)]
+       def get_method_balance(m_name):
+            # This forces an EXACT match, so accounts never cross over!
+            m_df = df[df['Method'].astype(str).str.strip() == m_name]
             income = m_df['Advance'].sum() + m_df['Final Payment'].sum()
             expense = m_df['Expenses'].sum()
             return income - expense
