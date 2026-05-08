@@ -107,7 +107,7 @@ with tab2:
         adv_val = c2.number_input("Advance/Deposit Paid (NPR)", min_value=0)
         method = st.selectbox("Payment Method", ["eSewa", "Fonepay", "Cash", "Bank"])
         
-        if st.form_submit_button("Save Booking"):
+       if st.form_submit_button("Save Booking"):
             # Group the events the user actually selected
             events = [(n1, d1), (n2, d2), (n3, d3), (n4, d4), (n5, d5)]
             valid_events = [e for e in events if e[1] is not None]
@@ -119,7 +119,6 @@ with tab2:
                 nep_dates = []
                 
                 for ev_name, ev_date in valid_events:
-                    # This creates the nice format: "2026-05-08 (Wedding)"
                     eng_dates.append(f"{ev_date} ({ev_name})")
                     try:
                         nep = str(nepali_datetime.date.from_datetime_date(ev_date))
@@ -130,7 +129,7 @@ with tab2:
                 eng_date_str = ", ".join(eng_dates)
                 nep_date_str = ", ".join(nep_dates)
                 
-               new_row = pd.DataFrame([{
+                new_row = pd.DataFrame([{
                     "Project": name, 
                     "Date": eng_date_str, 
                     "BS Date": nep_date_str, 
@@ -140,7 +139,7 @@ with tab2:
                     "Method": method, 
                     "Expenses": 0, 
                     "Type": "Shoot",
-                    "Status": "Booked" # <--- ADD THIS EXACT LINE!
+                    "Status": "Booked"
                 }])
                 
                 updated_df = pd.concat([df, new_row], ignore_index=True)
