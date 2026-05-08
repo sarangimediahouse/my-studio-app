@@ -178,16 +178,20 @@ with tab2:
 # --- TAB 3: LEDGER ---
 # --- TAB 3: LEDGER ---
 # --- TAB 3: LEDGER ---
+# --- TAB 3: LEDGER ---
 with tab3:
     st.subheader("Transaction Ledgers")
     if not df.empty:
+        # 1. Clean the numbers and sort by date
         df['Final Payment'] = pd.to_numeric(df.get('Final Payment', 0), errors='coerce').fillna(0)
         df['Secret_Sort'] = pd.to_datetime(df['Date'].apply(lambda x: str(x).split(', ')[0].split(' ')[0]), errors='coerce')
         df = df.sort_values(by='Secret_Sort', ascending=True).drop(columns=['Secret_Sort'])
         
+        # Safety Check: Ensure Final Method exists so the app doesn't crash
         if 'Final Method' not in df.columns:
             df['Final Method'] = df['Method']
             
+        # 2. Create the 3 Sub-Tabs
         proj_tab, exp_tab, trans_tab = st.tabs(["📸 Projects", "💸 Expenses", "🔄 Transfers"])
         
         with proj_tab:
@@ -201,7 +205,9 @@ with tab3:
                     "Status": st.column_config.SelectboxColumn("Status", options=["Booked", "Shooting", "Editing", "Completed", "Delivered"]),
                     "Method": st.column_config.SelectboxColumn("Adv. Method", options=["Cash", "Bank", "eSewa"]),
                     "Final Method": st.column_config.SelectboxColumn("Final Method", options=["Cash", "Bank", "eSewa"])
-                }
+                },
+                # This puts columns in perfect order and hides the rest!
+                column_order=["Project", "Date", "Total", "Advance", "Method", "Final Payment", "Final Method", "Remaining", "Status"]
             )
             
         with exp_tab:
@@ -211,18 +217,34 @@ with tab3:
                 num_rows="dynamic", 
                 use_container_width=True, 
                 key="e_tab",
-                column_config={"Project": "Expense Details", "Method": "Paid From (Account)"},
+                column_config={
+                    "Project": "Expense Details", 
+                    "Method": "Paid From (Account)"
+                },
+                # Hides extra math columns for expenses
                 column_order=["Date", "Project", "Method", "Expenses"] 
             )
             
         with trans_tab:
             trans_df = df[df['Type'] == 'Transfer'].reset_index(drop=True)
-            edited_trans = st.data_editor(trans_df, num_rows="dynamic", use_container_width=True, key="t_tab")
+            edited_trans = st.data_editor(
+                trans_df, 
+                num_rows="dynamic", 
+                use_container_width=True, 
+                key="t_tab"
+            )
         
         st.divider()
+        
+        # 3. The Master Save Button
         if st.button("💾 Save All Ledgers"):
+            # Grab any data that isn't a Shoot, Expense, or Transfer so it isn't lost
             other_df = df[~df['Type'].isin(['Shoot', 'Expense', 'Transfer'])]
+            
+            # Glue everything back together
             updated_master_df = pd.concat([edited_proj, edited_exp, edited_trans, other_df], ignore_index=True)
+            
+            # Save to Google Sheets
             conn.update(worksheet="Sheet1", data=updated_master_df)
             st.success("Ledgers saved successfully!")
             st.rerun()
