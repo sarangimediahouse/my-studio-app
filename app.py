@@ -33,6 +33,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Dashboard", "➕ New Booking", "�
 # --- TAB 1: DASHBOARD (Money Overview) ---
 with tab1:
     if not df.empty:
+        # 1. Clean the data
         df['Advance'] = pd.to_numeric(df['Advance'], errors='coerce').fillna(0)
         final_col = 'Final Payment' if 'Final Payment' in df.columns else 'Final_Payment'
         df['Final Payment'] = pd.to_numeric(df.get(final_col, 0), errors='coerce').fillna(0)
@@ -44,12 +45,16 @@ with tab1:
             df['Final Method'] = df['Method']
         df['Final Method'] = df['Final Method'].fillna(df['Method'])
         
-        studio_df = df[df['Type'] != 'Transfer']
+        studio_df = df[df['Type'] != 'Transfer'].copy()
+        
+        # Give the whole dashboard access to real dates
+        studio_df['Real_Date'] = pd.to_datetime(studio_df['Date'].apply(lambda x: str(x).split(', ')[0].split(' ')[0]), errors='coerce')
         
         total_collected = studio_df["Advance"].sum() + studio_df["Final Payment"].sum()
         total_spent = studio_df["Expenses"].sum()
         available_balance = total_collected - total_spent
-        # This forces the app to ONLY count pending money from official Shoots
+        
+        # Safe pending calculation
         total_pending = df[(df['Type'] == 'Shoot') & (df['Remaining'] > 0)]['Remaining'].sum()
 
         st.subheader("💰 Studio Overview")
@@ -73,8 +78,45 @@ with tab1:
         w3.metric("eSewa", f"Rs. {get_method_balance('eSewa'):,}")
 
         # ==========================================
-        # 📅 MOVED UP: UPCOMING SHOOT SCHEDULE
+        # ⏱️ NEW: QUICK TIME FILTERS
         # ==========================================
+        st.divider()
+        st.subheader("⏱️ Quick Performance Tracker")
+        
+        # Create the interactive buttons
+        time_filter = st.radio(
+            "Select Timeframe:", 
+            ["Today", "Yesterday", "Last 2 Days", "Last 7 Days", "This Month"], 
+            horizontal=True
+        )
+        
+        # Figure out what "Today" is
+        today = pd.Timestamp('today').normalize()
+        
+        # Filter the math based on what button you clicked
+        if time_filter == "Today":
+            filtered_df = studio_df[studio_df['Real_Date'] == today]
+        elif time_filter == "Yesterday":
+            filtered_df = studio_df[studio_df['Real_Date'] == today - pd.Timedelta(days=1)]
+        elif time_filter == "Last 2 Days":
+            filtered_df = studio_df[studio_df['Real_Date'] >= today - pd.Timedelta(days=2)]
+        elif time_filter == "Last 7 Days":
+            filtered_df = studio_df[studio_df['Real_Date'] >= today - pd.Timedelta(days=7)]
+        elif time_filter == "This Month":
+            # Shows everything from the last 30 days
+            filtered_df = studio_df[studio_df['Real_Date'] >= today - pd.Timedelta(days=30)]
+            
+        t_income = filtered_df['Advance'].sum() + filtered_df['Final Payment'].sum()
+        t_expense = filtered_df['Expenses'].sum()
+        t_profit = t_income - t_expense
+        
+        # Show the quick numbers
+        q1, q2, q3 = st.columns(3)
+        q1.metric(f"Income ({time_filter})", f"Rs. {t_income:,}")
+        q2.metric(f"Expenses ({time_filter})", f"Rs. {t_expense:,}")
+        q3.metric(f"Net Profit ({time_filter})", f"Rs. {t_profit:,}")
+        # ==========================================
+
         st.divider()
         st.subheader("📅 Upcoming Shoot Schedule")
         upcoming = df[df['Type'] == "Shoot"].copy()
@@ -86,49 +128,36 @@ with tab1:
         upcoming = upcoming[upcoming['Sort_Date'] >= pd.Timestamp(date.today())].sort_values('Sort_Date')
         st.table(upcoming[['Date', 'Project', 'Status', 'Total', 'Remaining']].head(5))
 
-        # ==========================================
-        # 📈 MOVED DOWN: ADVANCED CASH FLOW CHART
-        # ==========================================
         st.divider()
         st.subheader("📈 Monthly Cash Flow & Profit")
         
-        # 1. Prepare the data
-        chart_data = df[df['Type'] != 'Transfer'].copy()
-        chart_data['Real_Date'] = pd.to_datetime(chart_data['Date'].apply(lambda x: str(x).split(', ')[0].split(' ')[0]), errors='coerce')
-        chart_data = chart_data.dropna(subset=['Real_Date'])
+        chart_data = studio_df.dropna(subset=['Real_Date']).copy()
         
         if not chart_data.empty:
-            chart_data['Month_Name'] = chart_data['Real_Date'].dt.strftime('%B %Y') # "May 2026"
-            chart_data['Sort_Month'] = chart_data['Real_Date'].dt.strftime('%Y-%m') # "2026-05"
+            chart_data['Month_Name'] = chart_data['Real_Date'].dt.strftime('%B %Y') 
+            chart_data['Sort_Month'] = chart_data['Real_Date'].dt.strftime('%Y-%m') 
             chart_data['Income'] = chart_data['Advance'] + chart_data['Final Payment']
             
-            # Crush the math down into monthly totals
             monthly_summary = chart_data.groupby(['Sort_Month', 'Month_Name'])[['Income', 'Expenses']].sum().reset_index()
             monthly_summary = monthly_summary.sort_values('Sort_Month')
             monthly_summary['Net Profit'] = monthly_summary['Income'] - monthly_summary['Expenses']
             
-            # 2. Add the easy Month Tracker dropdown
             all_months = monthly_summary['Month_Name'].tolist()
             selected_months = st.multiselect("📅 Select Months to View", options=all_months, default=all_months[-6:] if len(all_months) > 6 else all_months)
             
             if selected_months:
                 filtered_data = monthly_summary[monthly_summary['Month_Name'].isin(selected_months)]
                 
-                # 3. Draw the Custom Plotly Chart
                 import plotly.graph_objects as go
                 fig = go.Figure()
                 
-                # Light Blue Bar: Income
                 fig.add_trace(go.Bar(x=filtered_data['Month_Name'], y=filtered_data['Income'], name='Income', marker_color='#00b4d8'))
-                # Dark Blue Bar: Expenses
                 fig.add_trace(go.Bar(x=filtered_data['Month_Name'], y=filtered_data['Expenses'], name='Expenses', marker_color='#0077b6'))
-                # Curvy Red Line: Net Profit (shape='spline' makes the curve!)
                 fig.add_trace(go.Scatter(x=filtered_data['Month_Name'], y=filtered_data['Net Profit'], name='Net Profit', mode='lines+markers', line=dict(color='#ef233c', width=3, shape='spline')))
                 
-                # Make it look clean
                 fig.update_layout(
-                    barmode='group', # Puts bars side-by-side
-                    hovermode="x unified", # Shows all 3 numbers when you hover
+                    barmode='group', 
+                    hovermode="x unified", 
                     margin=dict(l=0, r=0, t=30, b=0),
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
                 )
@@ -138,7 +167,6 @@ with tab1:
                 st.warning("⚠️ Please select at least one month to view the chart.")
         else:
             st.info("Not enough dated entries to generate a chart yet!")
-        # ==========================================
 
     else:
         st.info("No data yet. Start by adding a booking!")
