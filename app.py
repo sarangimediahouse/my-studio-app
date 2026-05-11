@@ -270,10 +270,14 @@ with tab3:
         df['Secret_Sort'] = pd.to_datetime(df['Date'].apply(lambda x: str(x).split(', ')[0].split(' ')[0]), errors='coerce')
         df = df.sort_values(by='Secret_Sort', ascending=True).drop(columns=['Secret_Sort'])
         
-        # --- BLANK CELL FIX ---
         if 'Final Method' not in df.columns:
             df['Final Method'] = df['Method']
         df['Final Method'] = df['Final Method'].fillna(df['Method'])
+
+        # --- BLANK CATEGORY FIX ---
+        if 'Expense Category' not in df.columns:
+            df['Expense Category'] = "General"
+        df['Expense Category'] = df['Expense Category'].fillna("General")
             
         proj_tab, exp_tab, trans_tab = st.tabs(["📸 Projects", "💸 Expenses", "🔄 Transfers"])
         
@@ -301,19 +305,15 @@ with tab3:
                 key="e_tab",
                 column_config={
                     "Project": "Expense Details", 
-                    "Method": "Paid From (Account)"
+                    "Method": "Paid From",
+                    "Expense Category": st.column_config.SelectboxColumn("Category", options=["Gear & Tech", "Travel & Fuel", "Freelancers", "Rent & Utilities", "Marketing", "Meals", "General"])
                 },
-                column_order=["Date", "Project", "Method", "Expenses"] 
+                column_order=["Date", "Expense Category", "Project", "Method", "Expenses"] 
             )
             
         with trans_tab:
             trans_df = df[df['Type'] == 'Transfer'].reset_index(drop=True)
-            edited_trans = st.data_editor(
-                trans_df, 
-                num_rows="dynamic", 
-                use_container_width=True, 
-                key="t_tab"
-            )
+            edited_trans = st.data_editor(trans_df, num_rows="dynamic", use_container_width=True, key="t_tab")
         
         st.divider()
         
@@ -321,46 +321,47 @@ with tab3:
             other_df = df[~df['Type'].isin(['Shoot', 'Expense', 'Transfer'])]
             updated_master_df = pd.concat([edited_proj, edited_exp, edited_trans, other_df], ignore_index=True)
             conn.update(worksheet="Sheet1", data=updated_master_df)
-            
-            # --- CACHE GHOST FIX ---
-            st.cache_data.clear() # Forces the app to instantly read the new data!
-            
+            st.cache_data.clear()
             st.success("Ledgers saved successfully!")
             st.rerun()
     else:
         st.write("No transactions yet.")
 # --- TAB 4: ADD EXPENSES ---
+# --- TAB 4: ADD EXPENSES ---
 with tab4:
     st.subheader("💸 Record an Expense")
     with st.form("expense_form", clear_on_submit=True):
         
-        # No more projects! Just a simple description.
         ex_desc = st.text_input("What is this expense for?", placeholder="e.g. SD Card, Studio Rent, Editing")
         ex_amount = st.number_input("Amount Paid (NPR)", min_value=1)
         
-        c1, c2 = st.columns(2)
+        c1, c2, c3 = st.columns(3)
         ex_date = c1.date_input("Date Paid")
-        # Here is your Cash/Bank/eSewa selector!
         ex_method = c2.selectbox("Paid From", ["Cash", "Bank", "eSewa"]) 
+        # --- NEW CATEGORY DROPDOWN ---
+        ex_cat = c3.selectbox("Category", ["Gear & Tech", "Travel & Fuel", "Freelancers", "Rent & Utilities", "Marketing", "Meals", "General"])
         
         if st.form_submit_button("Save Expense"):
             if not ex_desc:
                 st.error("⚠️ Please write down what this expense was for!")
             else:
                 new_ex_row = pd.DataFrame([{
-                    "Project": ex_desc, # We save the description here so it doesn't leave a blank space in Google Sheets
+                    "Project": ex_desc, 
                     "Date": str(ex_date),
                     "BS Date": str(nepali_datetime.date.from_datetime_date(ex_date)),
                     "Total": 0, "Advance": 0, "Final Payment": 0,
-                    "Method": ex_method, # Saves exactly which wallet you used
+                    "Method": ex_method, 
+                    "Final Method": ex_method,
                     "Expenses": ex_amount, 
                     "Type": "Expense",
-                    "Status": "Completed"
+                    "Status": "Completed",
+                    "Expense Category": ex_cat # Saves the new category!
                 }])
                 
                 updated_df = pd.concat([df, new_ex_row], ignore_index=True)
                 conn.update(worksheet="Sheet1", data=updated_df)
-                st.success(f"Recorded Rs. {ex_amount} expense paid from {ex_method}!")
+                st.cache_data.clear() # Flushes memory instantly!
+                st.success(f"Recorded Rs. {ex_amount} expense for {ex_cat}!")
                 st.rerun()
             # --- TAB 5: TRANSFER MONEY ---
 with tab5:
