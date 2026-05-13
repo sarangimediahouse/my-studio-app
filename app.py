@@ -86,7 +86,7 @@ with tab1:
             c3.metric("Total Expenses", f"Rs. {total_spent:,}")
 
         st.divider()
-       def get_method_balance(m_name):
+        def get_method_balance(m_name):
             # Ignore loans that have been returned so the money goes back to normal!
             active_df = df[~((df['Type'].isin(['Lend', 'Borrow'])) & (df['Status'].isin(['Returned', 'Settled'])))]
 
