@@ -367,7 +367,8 @@ Advance Paid:    Rs. {c_adv:,}"""
 TOTAL PAID:      Rs. {c_paid:,}
 REMAINING DUE:   Rs. {c_due:,}
 =================================
-Thank you SARANGI MEDIA HOUSE🙏"""
+Thank you 
+SARANGI MEDIA HOUSE🙏"""
 
             st.text_area("📋 Copy this text and paste it into WhatsApp:", value=invoice_text, height=350)
             
