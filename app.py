@@ -12,7 +12,7 @@ st.set_page_config(page_title="Sarangi Media House", page_icon="🎥", layout="w
 col1, col2 = st.columns([1, 8])
 with col1:
     try:
-        st.image("sarangi.png", use_container_width=True) 
+        st.image("logo.png", use_container_width=True) 
     except:
         st.write("🎥") 
 with col2:
@@ -116,7 +116,6 @@ with tab1:
         upcoming = upcoming[upcoming['Real_Date'] >= today].sort_values('Real_Date')
         upcoming = upcoming.rename(columns={"Date": "AD Date"})
         
-        # This makes it fit perfectly on your phone screen and hides row numbers!
         st.dataframe(
             upcoming[['Project', 'BS Date', 'AD Date', 'Status', 'Total', 'Remaining']].head(5),
             hide_index=True,
@@ -162,7 +161,9 @@ with tab2:
         inc_cat = st.selectbox("Shoot Category", ["Wedding", "Commercial", "Event", "Portrait", "Music Video", "Other"])
         
         col1, col2 = st.columns(2)
-        eng_date = col1.date_input("Date (AD -> Auto-converts to BS)")
+        eng_date = col1.date_input("Date (AD)")
+        # NEW MANUAL OVERRIDE BOX
+        bs_manual = col2.text_input("BS Date (Leave blank to auto-convert)", placeholder="e.g. 2083-03-09")
         
         col3, col4, col5 = st.columns(3)
         total_val = col3.number_input("Total Amount", min_value=0)
@@ -173,7 +174,9 @@ with tab2:
             if not name:
                 st.error("Please enter a Project Name!")
             else:
-                nep_date_str = str(nepali_datetime.date.from_datetime_date(eng_date))
+                # If they typed a custom date, use it. Otherwise, guess it.
+                nep_date_str = bs_manual if bs_manual else str(nepali_datetime.date.from_datetime_date(eng_date))
+                
                 new_row = pd.DataFrame([{
                     "Project": name, "Date": str(eng_date), "BS Date": nep_date_str, 
                     "Total": total_val, "Advance": adv_val, "Mid Payment": 0, "Final Payment": 0,  
@@ -184,7 +187,7 @@ with tab2:
                 updated_df = pd.concat([df.drop(columns=['Real_Date'], errors='ignore'), new_row], ignore_index=True)
                 conn.update(worksheet="Sheet1", data=updated_df)
                 st.cache_data.clear()
-                st.success(f"Booking saved! Converted to BS Date: {nep_date_str}")
+                st.success(f"Booking saved! BS Date set to: {nep_date_str}")
                 st.rerun()
 
 # --- TAB 3: LEDGER ---
@@ -258,16 +261,20 @@ with tab4:
         ex_desc = st.text_input("What is this expense for?")
         ex_amount = st.number_input("Amount Paid (NPR)", min_value=1)
         
-        c1, c2, c3 = st.columns(3)
+        c1, c2 = st.columns(2)
         ex_date = c1.date_input("Date Paid (AD)")
-        ex_method = c2.selectbox("Paid From", ["Cash", "Bank", "eSewa"])
-        ex_cat = c3.selectbox("Category", ["Gear & Tech", "Travel & Fuel", "Freelancers", "Rent & Utilities", "Marketing", "Meals", "General"])
+        bs_manual_ex = c2.text_input("BS Date (Leave blank to auto-convert)", placeholder="Override if wrong")
+        
+        c3, c4 = st.columns(2)
+        ex_method = c3.selectbox("Paid From", ["Cash", "Bank", "eSewa"])
+        ex_cat = c4.selectbox("Category", ["Gear & Tech", "Travel & Fuel", "Freelancers", "Rent & Utilities", "Marketing", "Meals", "General"])
         
         if st.form_submit_button("Save Expense"):
             if not ex_desc:
                 st.error("Please enter a description!")
             else:
-                nep_date_str = str(nepali_datetime.date.from_datetime_date(ex_date))
+                nep_date_str = bs_manual_ex if bs_manual_ex else str(nepali_datetime.date.from_datetime_date(ex_date))
+                
                 new_ex = pd.DataFrame([{
                     "Project": ex_desc, "Date": str(ex_date), "BS Date": nep_date_str,
                     "Total": 0, "Advance": 0, "Mid Payment": 0, "Final Payment": 0,
@@ -286,16 +293,21 @@ with tab5:
     st.subheader("🔄 Transfer Between Wallets")
     with st.form("transfer_form", clear_on_submit=True):
         t_amount = st.number_input("Amount", min_value=1)
-        c1, c2, c3 = st.columns(3)
+        
+        c1, c2 = st.columns(2)
         t_date = c1.date_input("Date (AD)")
-        t_from = c2.selectbox("From", ["Cash", "Bank", "eSewa"])
-        t_to = c3.selectbox("To", ["Bank", "eSewa", "Cash"])
+        bs_manual_tr = c2.text_input("BS Date (Leave blank to auto-convert)", placeholder="Override if wrong")
+        
+        c3, c4 = st.columns(2)
+        t_from = c3.selectbox("From", ["Cash", "Bank", "eSewa"])
+        t_to = c4.selectbox("To", ["Bank", "eSewa", "Cash"])
         
         if st.form_submit_button("Transfer"):
             if t_from == t_to:
                 st.error("Cannot transfer to the same wallet!")
             else:
-                nep_date_str = str(nepali_datetime.date.from_datetime_date(t_date))
+                nep_date_str = bs_manual_tr if bs_manual_tr else str(nepali_datetime.date.from_datetime_date(t_date))
+                
                 trans_out = pd.DataFrame([{"Project": f"Transfer to {t_to}", "Date": str(t_date), "BS Date": nep_date_str, "Total": 0, "Advance": 0, "Mid Payment": 0, "Final Payment": 0, "Method": t_from, "Mid Method": t_from, "Final Method": t_from, "Expenses": t_amount, "Type": "Transfer", "Status": "Completed", "Expense Category": "Transfer", "Income Category": "Transfer"}])
                 trans_in = pd.DataFrame([{"Project": f"Transfer from {t_from}", "Date": str(t_date), "BS Date": nep_date_str, "Total": 0, "Advance": t_amount, "Mid Payment": 0, "Final Payment": 0, "Method": t_to, "Mid Method": t_to, "Final Method": t_to, "Expenses": 0, "Type": "Transfer", "Status": "Completed", "Expense Category": "Transfer", "Income Category": "Transfer"}])
                 
@@ -314,9 +326,10 @@ with tab6:
         person_name = st.text_input("Person's Name")
         loan_amount = st.number_input("Amount (NPR)", min_value=1)
         
-        c1, c2 = st.columns(2)
+        c1, c2, c3 = st.columns(3)
         loan_date = c1.date_input("Date (AD)")
-        loan_method = c2.selectbox("Wallet Used", ["Cash", "Bank", "eSewa"])
+        bs_manual_ln = c2.text_input("BS Date Override")
+        loan_method = c3.selectbox("Wallet Used", ["Cash", "Bank", "eSewa"])
         
         if st.form_submit_button("Save Record"):
             if not person_name:
@@ -325,7 +338,8 @@ with tab6:
                 l_adv = 0 if "Lending" in loan_type else loan_amount
                 l_exp = loan_amount if "Lending" in loan_type else 0
                 l_tag = "Lend" if "Lending" in loan_type else "Borrow"
-                nep_date_str = str(nepali_datetime.date.from_datetime_date(loan_date))
+                
+                nep_date_str = bs_manual_ln if bs_manual_ln else str(nepali_datetime.date.from_datetime_date(loan_date))
                     
                 new_loan = pd.DataFrame([{
                     "Project": person_name, "Date": str(loan_date), "BS Date": nep_date_str,
@@ -366,7 +380,6 @@ with tab7:
             c_paid = c_adv + c_mid + c_final
             c_due = c_total - c_paid
             
-            # Using BOTH BS and AD Dates for the invoice
             bs_date_val = client_data.get('BS Date', 'TBD')
             ad_date_val = client_data.get('Date', 'TBD')
             
