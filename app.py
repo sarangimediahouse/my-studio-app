@@ -114,9 +114,14 @@ with tab1:
         st.subheader("📅 Upcoming Shoot Schedule")
         upcoming = df[df['Type'] == "Shoot"].copy()
         upcoming = upcoming[upcoming['Real_Date'] >= today].sort_values('Real_Date')
-        # Displaying BOTH BS Date and English Date
         upcoming = upcoming.rename(columns={"Date": "AD Date"})
-        st.table(upcoming[['BS Date', 'AD Date', 'Project', 'Status', 'Total', 'Remaining']].head(5))
+        
+        # This makes it fit perfectly on your phone screen and hides row numbers!
+        st.dataframe(
+            upcoming[['Project', 'BS Date', 'AD Date', 'Status', 'Total', 'Remaining']].head(5),
+            hide_index=True,
+            use_container_width=True
+        )
 
         st.divider()
         st.subheader("📈 Monthly Cash Flow & Profit")
