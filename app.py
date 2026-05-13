@@ -87,13 +87,19 @@ with tab1:
 
         st.divider()
        def get_method_balance(m_name):
-            # Base sums (includes Shoots, Expenses, Transfers, and INITIAL Loans)
+            # Base sums
             adv_income = df[df['Method'].astype(str).str.strip() == m_name]['Advance'].sum()
             mid_income = df[df['Mid Method'].astype(str).str.strip() == m_name]['Mid Payment'].sum()
             fin_income = df[df['Final Method'].astype(str).str.strip() == m_name]['Final Payment'].sum()
             expense = df[df['Method'].astype(str).str.strip() == m_name]['Expenses'].sum()
             
             balance = (adv_income + mid_income + fin_income) - expense
+            
+            # Smart Adjustment for RETURNED LOANS
+            lend_returned = df[(df['Type'] == 'Lend') & (df['Status'].isin(['Returned', 'Settled'])) & (df['Final Method'].astype(str).str.strip() == m_name)]['Total'].sum()
+            borrow_returned = df[(df['Type'] == 'Borrow') & (df['Status'].isin(['Returned', 'Settled'])) & (df['Final Method'].astype(str).str.strip() == m_name)]['Total'].sum()
+            
+            return balance + lend_returned - borrow_returned
             
             # Adjustment for RETURNED LOANS based on the Return Wallet
             lend_returned = df[(df['Type'] == 'Lend') & (df['Status'].isin(['Returned', 'Settled'])) & (df['Final Method'].astype(str).str.strip() == m_name)]['Total'].sum()
