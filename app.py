@@ -12,13 +12,13 @@ st.set_page_config(page_title="Sarangi Media Hous", page_icon="🎥", layout="wi
 col1, col2 = st.columns([1, 8])
 with col1:
     try:
-        st.image("logo.png", use_container_width=True) 
+        st.image("sarangi.png", use_container_width=True) 
     except:
         st.write("🎥") 
 with col2:
-    st.title("SARANGI MEDIA HOUSE Dashboard")
-with col2:
-    st.title("Dashboard")
+    st.title("SARANGI MEDIA HOUSE")
+with col3:
+    st.title("DASHBOARD")
 
 # --- DATABASE CONNECTION ---
 conn = st.connection("gsheets", type=GSheetsConnection)
