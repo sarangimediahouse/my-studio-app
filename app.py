@@ -86,12 +86,14 @@ with tab1:
             c3.metric("Total Expenses", f"Rs. {total_spent:,}")
 
         st.divider()
-        st.subheader("🏦 Wallets")
-        def get_method_balance(m_name):
-            adv_income = df[df['Method'].astype(str).str.strip() == m_name]['Advance'].sum()
-            mid_income = df[df['Mid Method'].astype(str).str.strip() == m_name]['Mid Payment'].sum()
-            fin_income = df[df['Final Method'].astype(str).str.strip() == m_name]['Final Payment'].sum()
-            expense = df[df['Method'].astype(str).str.strip() == m_name]['Expenses'].sum()
+       def get_method_balance(m_name):
+            # Ignore loans that have been returned so the money goes back to normal!
+            active_df = df[~((df['Type'].isin(['Lend', 'Borrow'])) & (df['Status'].isin(['Returned', 'Settled'])))]
+
+            adv_income = active_df[active_df['Method'].astype(str).str.strip() == m_name]['Advance'].sum()
+            mid_income = active_df[active_df['Mid Method'].astype(str).str.strip() == m_name]['Mid Payment'].sum()
+            fin_income = active_df[active_df['Final Method'].astype(str).str.strip() == m_name]['Final Payment'].sum()
+            expense = active_df[active_df['Method'].astype(str).str.strip() == m_name]['Expenses'].sum()
             return (adv_income + mid_income + fin_income) - expense
 
         w1, w2, w3 = st.columns(3)
