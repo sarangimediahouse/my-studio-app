@@ -128,7 +128,7 @@ with tab1:
 # --- TAB 2: NEW BOOKING (RESTORED MULTI-EVENT FEATURE) ---
 with tab2:
     st.subheader("📝 New Booking")
-    st.caption("Book one client and add up to 3 different shoot dates at once!")
+    st.caption("Book one client and add up to 5 different shoot dates at once!")
     with st.form("booking_form", clear_on_submit=True):
         
         st.markdown("**Client Details & Money**")
@@ -161,21 +161,39 @@ with tab2:
 
         # Event 2 (Optional)
         if is_mobile:
-            e2_name = st.text_input("Event 2 Name (Optional)", placeholder="e.g. Haldi / Mehendi")
+            e2_name = st.text_input("Event 2 Name (Optional)", placeholder="e.g. Haldi")
             e2_date = st.date_input("Event 2 Date (AD)", key="d2")
         else:
             e2_col1, e2_col2 = st.columns(2)
-            e2_name = e2_col1.text_input("Event 2 Name (Optional)", placeholder="e.g. Haldi / Mehendi")
+            e2_name = e2_col1.text_input("Event 2 Name (Optional)", placeholder="e.g. Haldi")
             e2_date = e2_col2.date_input("Event 2 Date (AD)", key="d2")
             
         # Event 3 (Optional)
         if is_mobile:
-            e3_name = st.text_input("Event 3 Name (Optional)", placeholder="e.g. Reception")
+            e3_name = st.text_input("Event 3 Name (Optional)", placeholder="e.g. Mehendi")
             e3_date = st.date_input("Event 3 Date (AD)", key="d3")
         else:
             e3_col1, e3_col2 = st.columns(2)
-            e3_name = e3_col1.text_input("Event 3 Name (Optional)", placeholder="e.g. Reception")
+            e3_name = e3_col1.text_input("Event 3 Name (Optional)", placeholder="e.g. Mehendi")
             e3_date = e3_col2.date_input("Event 3 Date (AD)", key="d3")
+
+        # Event 4 (Optional)
+        if is_mobile:
+            e4_name = st.text_input("Event 4 Name (Optional)", placeholder="e.g. Sangeet")
+            e4_date = st.date_input("Event 4 Date (AD)", key="d4")
+        else:
+            e4_col1, e4_col2 = st.columns(2)
+            e4_name = e4_col1.text_input("Event 4 Name (Optional)", placeholder="e.g. Sangeet")
+            e4_date = e4_col2.date_input("Event 4 Date (AD)", key="d4")
+
+        # Event 5 (Optional)
+        if is_mobile:
+            e5_name = st.text_input("Event 5 Name (Optional)", placeholder="e.g. Reception")
+            e5_date = st.date_input("Event 5 Date (AD)", key="d5")
+        else:
+            e5_col1, e5_col2 = st.columns(2)
+            e5_name = e5_col1.text_input("Event 5 Name (Optional)", placeholder="e.g. Reception")
+            e5_date = e5_col2.date_input("Event 5 Date (AD)", key="d5")
 
         if st.form_submit_button("Save Booking", use_container_width=True):
             if not name:
@@ -194,7 +212,7 @@ with tab2:
                     "Income Category": inc_cat, "Expense Category": "General"
                 })
                 
-                # Create Event 2 (Rs 0, just for the calendar)
+                # Create Event 2
                 if e2_name:
                     bs2 = str(nepali_datetime.date.from_datetime_date(e2_date))
                     rows_to_add.append({
@@ -205,11 +223,33 @@ with tab2:
                         "Income Category": inc_cat, "Expense Category": "General"
                     })
                     
-                # Create Event 3 (Rs 0, just for the calendar)
+                # Create Event 3
                 if e3_name:
                     bs3 = str(nepali_datetime.date.from_datetime_date(e3_date))
                     rows_to_add.append({
                         "Project": f"{name} - {e3_name}", "Date": str(e3_date), "BS Date": bs3, 
+                        "Total": 0, "Advance": 0, "Mid Payment": 0, "Final Payment": 0,  
+                        "Method": method, "Mid Method": method, "Final Method": method, 
+                        "Expenses": 0, "Type": "Shoot", "Status": "Booked", 
+                        "Income Category": inc_cat, "Expense Category": "General"
+                    })
+
+                # Create Event 4
+                if e4_name:
+                    bs4 = str(nepali_datetime.date.from_datetime_date(e4_date))
+                    rows_to_add.append({
+                        "Project": f"{name} - {e4_name}", "Date": str(e4_date), "BS Date": bs4, 
+                        "Total": 0, "Advance": 0, "Mid Payment": 0, "Final Payment": 0,  
+                        "Method": method, "Mid Method": method, "Final Method": method, 
+                        "Expenses": 0, "Type": "Shoot", "Status": "Booked", 
+                        "Income Category": inc_cat, "Expense Category": "General"
+                    })
+
+                # Create Event 5
+                if e5_name:
+                    bs5 = str(nepali_datetime.date.from_datetime_date(e5_date))
+                    rows_to_add.append({
+                        "Project": f"{name} - {e5_name}", "Date": str(e5_date), "BS Date": bs5, 
                         "Total": 0, "Advance": 0, "Mid Payment": 0, "Final Payment": 0,  
                         "Method": method, "Mid Method": method, "Final Method": method, 
                         "Expenses": 0, "Type": "Shoot", "Status": "Booked", 
