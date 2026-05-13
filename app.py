@@ -6,18 +6,14 @@ import plotly.graph_objects as go
 from streamlit_gsheets import GSheetsConnection
 
 # --- 🧠 DEVICE DETECTION BRAIN ---
-# This checks if the user is on a Mobile or PC
 user_agent = st.context.headers.get("User-Agent", "")
 is_mobile = any(x in user_agent for x in ["Mobile", "Android", "iPhone", "iPad"])
 
 # --- SETUP & PAGE CONFIG ---
 if is_mobile:
     st.set_page_config(page_title="Sarangi Mobile", page_icon="🎥")
-    layout_type = "mobile"
 else:
-    # Keeps your PC version Wide and Professional
     st.set_page_config(page_title="Sarangi Studio PC", page_icon="🎥", layout="wide")
-    layout_type = "pc"
 
 # --- LOGO & TITLE ---
 col1, col2 = st.columns([2, 8])
@@ -36,7 +32,7 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 df = conn.read(worksheet="Sheet1", ttl=5)
 df = df.dropna(how='all')
 
-# Ensure all required columns exist
+# Ensure core columns exist (NO EXTRA COLUMNS NEEDED!)
 required_cols = ['Project', 'Date', 'BS Date', 'Total', 'Advance', 'Method', 
                  'Mid Payment', 'Mid Method', 'Final Payment', 'Final Method', 
                  'Expenses', 'Type', 'Status', 'Expense Category', 'Income Category']
@@ -60,7 +56,7 @@ df['Income Category'] = df['Income Category'].fillna("Other")
 
 df['Real_Date'] = pd.to_datetime(df['Date'].apply(lambda x: str(x).split(', ')[0].split(' ')[0]), errors='coerce')
 
-# --- TABS MENU (Short names for Mobile, Long names for PC) ---
+# --- TABS MENU ---
 if is_mobile:
     tab_names = ["📊 Dash", "📝 Book", "📓 Ledger", "💸 Exp", "🔄 Move", "🤝 Loan", "🧾 Bill"]
 else:
@@ -126,50 +122,108 @@ with tab1:
         st.subheader("📅 Upcoming Shoots")
         upcoming = df[df['Type'] == "Shoot"].copy()
         upcoming = upcoming[upcoming['Real_Date'] >= today].sort_values('Real_Date')
-        st.dataframe(upcoming[['Project', 'BS Date', 'Status', 'Remaining']].head(5), hide_index=True, use_container_width=True)
+        upcoming = upcoming.rename(columns={"Date": "AD Date"})
+        st.dataframe(upcoming[['Project', 'BS Date', 'AD Date', 'Status', 'Remaining']].head(5), hide_index=True, use_container_width=True)
 
-# --- TAB 2: NEW BOOKING (HYBRID LAYOUT) ---
+# --- TAB 2: NEW BOOKING (RESTORED MULTI-EVENT FEATURE) ---
 with tab2:
     st.subheader("📝 New Booking")
+    st.caption("Book one client and add up to 3 different shoot dates at once!")
     with st.form("booking_form", clear_on_submit=True):
+        
+        st.markdown("**Client Details & Money**")
         if is_mobile:
-            name = st.text_input("Project Name")
+            name = st.text_input("Main Client Name (e.g. Rahul & Priya)")
             inc_cat = st.selectbox("Category", ["Wedding", "Commercial", "Event", "Portrait", "Music Video", "Other"])
-            eng_date = st.date_input("Date (AD)")
-            bs_manual = st.text_input("BS Date Override", placeholder="e.g. 2083-03-09")
-            st.divider()
             total_val = st.number_input("Total Amount", min_value=0)
             adv_val = st.number_input("Advance Paid", min_value=0)
             method = st.selectbox("Method", ["Cash", "Bank", "eSewa"])
         else:
-            # PC WIDE LAYOUT
             c1, c2 = st.columns(2)
-            name = c1.text_input("Project Name")
+            name = c1.text_input("Main Client Name (e.g. Rahul & Priya)")
             inc_cat = c2.selectbox("Category", ["Wedding", "Commercial", "Event", "Portrait", "Music Video", "Other"])
-            c3, c4 = st.columns(2)
-            eng_date = c3.date_input("Date (AD)")
-            bs_manual = c4.text_input("BS Date Override")
             c5, c6, c7 = st.columns(3)
             total_val = c5.number_input("Total Amount", min_value=0)
             adv_val = c6.number_input("Advance Paid", min_value=0)
             method = c7.selectbox("Method", ["Cash", "Bank", "eSewa"])
 
-        if st.form_submit_button("Save Booking", use_container_width=True):
-            nep_date_str = bs_manual if bs_manual else str(nepali_datetime.date.from_datetime_date(eng_date))
-            new_row = pd.DataFrame([{
-                "Project": name, "Date": str(eng_date), "BS Date": nep_date_str, 
-                "Total": total_val, "Advance": adv_val, "Mid Payment": 0, "Final Payment": 0,  
-                "Method": method, "Mid Method": method, "Final Method": method, 
-                "Expenses": 0, "Type": "Shoot", "Status": "Booked", 
-                "Income Category": inc_cat, "Expense Category": "General"
-            }])
-            updated_df = pd.concat([df.drop(columns=['Real_Date'], errors='ignore'), new_row], ignore_index=True)
-            conn.update(worksheet="Sheet1", data=updated_df)
-            st.cache_data.clear()
-            st.success("Booking Saved!")
-            st.rerun()
+        st.markdown("---")
+        st.markdown("**Shoot Dates & Events**")
+        
+        # Event 1 (Mandatory)
+        if is_mobile:
+            e1_name = st.text_input("Event 1 Name", value="Main Shoot")
+            e1_date = st.date_input("Event 1 Date (AD)", key="d1")
+        else:
+            e1_col1, e1_col2 = st.columns(2)
+            e1_name = e1_col1.text_input("Event 1 Name", value="Main Shoot")
+            e1_date = e1_col2.date_input("Event 1 Date (AD)", key="d1")
 
-# --- TAB 3: LEDGER (WIDE FOR BOTH) ---
+        # Event 2 (Optional)
+        if is_mobile:
+            e2_name = st.text_input("Event 2 Name (Optional)", placeholder="e.g. Haldi / Mehendi")
+            e2_date = st.date_input("Event 2 Date (AD)", key="d2")
+        else:
+            e2_col1, e2_col2 = st.columns(2)
+            e2_name = e2_col1.text_input("Event 2 Name (Optional)", placeholder="e.g. Haldi / Mehendi")
+            e2_date = e2_col2.date_input("Event 2 Date (AD)", key="d2")
+            
+        # Event 3 (Optional)
+        if is_mobile:
+            e3_name = st.text_input("Event 3 Name (Optional)", placeholder="e.g. Reception")
+            e3_date = st.date_input("Event 3 Date (AD)", key="d3")
+        else:
+            e3_col1, e3_col2 = st.columns(2)
+            e3_name = e3_col1.text_input("Event 3 Name (Optional)", placeholder="e.g. Reception")
+            e3_date = e3_col2.date_input("Event 3 Date (AD)", key="d3")
+
+        if st.form_submit_button("Save Booking", use_container_width=True):
+            if not name:
+                st.error("Please enter a Client Name!")
+            else:
+                rows_to_add = []
+                
+                # Create Event 1 (This holds all the money)
+                bs1 = str(nepali_datetime.date.from_datetime_date(e1_date))
+                proj1_name = f"{name} - {e1_name}" if e1_name else name
+                rows_to_add.append({
+                    "Project": proj1_name, "Date": str(e1_date), "BS Date": bs1, 
+                    "Total": total_val, "Advance": adv_val, "Mid Payment": 0, "Final Payment": 0,  
+                    "Method": method, "Mid Method": method, "Final Method": method, 
+                    "Expenses": 0, "Type": "Shoot", "Status": "Booked", 
+                    "Income Category": inc_cat, "Expense Category": "General"
+                })
+                
+                # Create Event 2 (Rs 0, just for the calendar)
+                if e2_name:
+                    bs2 = str(nepali_datetime.date.from_datetime_date(e2_date))
+                    rows_to_add.append({
+                        "Project": f"{name} - {e2_name}", "Date": str(e2_date), "BS Date": bs2, 
+                        "Total": 0, "Advance": 0, "Mid Payment": 0, "Final Payment": 0,  
+                        "Method": method, "Mid Method": method, "Final Method": method, 
+                        "Expenses": 0, "Type": "Shoot", "Status": "Booked", 
+                        "Income Category": inc_cat, "Expense Category": "General"
+                    })
+                    
+                # Create Event 3 (Rs 0, just for the calendar)
+                if e3_name:
+                    bs3 = str(nepali_datetime.date.from_datetime_date(e3_date))
+                    rows_to_add.append({
+                        "Project": f"{name} - {e3_name}", "Date": str(e3_date), "BS Date": bs3, 
+                        "Total": 0, "Advance": 0, "Mid Payment": 0, "Final Payment": 0,  
+                        "Method": method, "Mid Method": method, "Final Method": method, 
+                        "Expenses": 0, "Type": "Shoot", "Status": "Booked", 
+                        "Income Category": inc_cat, "Expense Category": "General"
+                    })
+
+                new_rows_df = pd.DataFrame(rows_to_add)
+                updated_df = pd.concat([df.drop(columns=['Real_Date'], errors='ignore'), new_rows_df], ignore_index=True)
+                conn.update(worksheet="Sheet1", data=updated_df)
+                st.cache_data.clear()
+                st.success("All events saved to calendar successfully!")
+                st.rerun()
+
+# --- TAB 3: LEDGER ---
 with tab3:
     st.subheader("📓 Ledger")
     if not df.empty:
@@ -178,19 +232,47 @@ with tab3:
         
         with proj_tab:
             proj_df = df_display[df_display['Type'] == 'Shoot'].reset_index(drop=True)
-            edited_proj = st.data_editor(proj_df, num_rows="dynamic", use_container_width=True, key="p_tab")
+            edited_proj = st.data_editor(
+                proj_df, num_rows="dynamic", use_container_width=True, key="p_tab",
+                column_config={
+                    "Date": "AD Date", 
+                    "Status": st.column_config.SelectboxColumn(options=["Booked", "Shooting", "Editing", "Completed", "Delivered"]),
+                    "Income Category": st.column_config.SelectboxColumn(options=["Wedding", "Commercial", "Event", "Portrait", "Music Video", "Other"]),
+                    "Method": st.column_config.SelectboxColumn(options=["Cash", "Bank", "eSewa"]),
+                    "Mid Method": st.column_config.SelectboxColumn(options=["Cash", "Bank", "eSewa"]),
+                    "Final Method": st.column_config.SelectboxColumn(options=["Cash", "Bank", "eSewa"])
+                },
+                column_order=["Project", "BS Date", "Date", "Status", "Income Category", "Total", "Advance", "Method", "Mid Payment", "Mid Method", "Final Payment", "Final Method", "Remaining"]
+            )
             
         with exp_tab:
             exp_df = df_display[df_display['Type'] == 'Expense'].reset_index(drop=True)
-            edited_exp = st.data_editor(exp_df, num_rows="dynamic", use_container_width=True, key="e_tab")
+            edited_exp = st.data_editor(
+                exp_df, num_rows="dynamic", use_container_width=True, key="e_tab",
+                column_config={"Date": "AD Date", "Expense Category": st.column_config.SelectboxColumn(options=["Gear & Tech", "Travel & Fuel", "Freelancers", "Rent & Utilities", "Marketing", "Meals", "General"])},
+                column_order=["BS Date", "Date", "Project", "Expenses", "Method", "Expense Category"]
+            )
             
         with trans_tab:
             trans_df = df_display[df_display['Type'] == 'Transfer'].reset_index(drop=True)
-            edited_trans = st.data_editor(trans_df, num_rows="dynamic", use_container_width=True, key="t_tab")
+            edited_trans = st.data_editor(
+                trans_df, num_rows="dynamic", use_container_width=True, key="t_tab", 
+                column_config={"Date": "AD Date"},
+                column_order=["BS Date", "Date", "Project", "Method", "Final Method", "Expenses", "Advance"]
+            )
             
         with loan_tab:
             loan_df = df_display[df_display['Type'].isin(['Lend', 'Borrow'])].reset_index(drop=True)
-            edited_loans = st.data_editor(loan_df, num_rows="dynamic", use_container_width=True, key="l_tab")
+            edited_loans = st.data_editor(
+                loan_df, num_rows="dynamic", use_container_width=True, key="l_tab",
+                column_config={
+                    "Date": "AD Date",
+                    "Type": st.column_config.SelectboxColumn(options=["Lend", "Borrow"]),
+                    "Status": st.column_config.SelectboxColumn(options=["Pending", "Returned", "Settled"]),
+                    "Method": st.column_config.SelectboxColumn(options=["Cash", "Bank", "eSewa"])
+                },
+                column_order=["BS Date", "Date", "Type", "Project", "Total", "Method", "Status"]
+            )
         
         if st.button("💾 Save All Ledgers", use_container_width=True):
             other_df = df_display[~df_display['Type'].isin(['Shoot', 'Expense', 'Transfer', 'Lend', 'Borrow'])]
@@ -200,7 +282,7 @@ with tab3:
             st.success("Saved!")
             st.rerun()
 
-# --- TAB 4: EXPENSES (HYBRID) ---
+# --- TAB 4: EXPENSES ---
 with tab4:
     st.subheader("💸 Record Expense")
     with st.form("expense_form", clear_on_submit=True):
@@ -214,9 +296,10 @@ with tab4:
             c1, c2 = st.columns(2)
             ex_desc = c1.text_input("Expense For?")
             ex_amount = c2.number_input("Amount (NPR)", min_value=1)
-            c3, c4, c5 = st.columns(3)
+            c3, c4 = st.columns(2)
             ex_date = c3.date_input("Date")
             ex_method = c4.selectbox("Paid From", ["Cash", "Bank", "eSewa"])
+            c5 = st.columns(1)[0]
             ex_cat = c5.selectbox("Category", ["Gear", "Freelance", "Rent", "Meals", "Other"])
 
         if st.form_submit_button("Save Expense", use_container_width=True):
@@ -242,12 +325,14 @@ with tab5:
         c1, c2 = st.columns(2)
         t_from = c1.selectbox("From", ["Cash", "Bank", "eSewa"])
         t_to = c2.selectbox("To", ["Bank", "eSewa", "Cash"])
+        t_date = st.date_input("Date (AD)")
+        
         if st.form_submit_button("Transfer", use_container_width=True):
             if t_from == t_to: st.error("Same wallet!")
             else:
-                nep_date_str = str(nepali_datetime.date.today())
-                trans_out = pd.DataFrame([{"Project": f"To {t_to}", "Date": str(date.today()), "BS Date": nep_date_str, "Total": 0, "Advance": 0, "Expenses": t_amount, "Type": "Transfer", "Method": t_from}])
-                trans_in = pd.DataFrame([{"Project": f"From {t_from}", "Date": str(date.today()), "BS Date": nep_date_str, "Total": 0, "Advance": t_amount, "Expenses": 0, "Type": "Transfer", "Method": t_to}])
+                nep_date_str = str(nepali_datetime.date.from_datetime_date(t_date))
+                trans_out = pd.DataFrame([{"Project": f"To {t_to}", "Date": str(t_date), "BS Date": nep_date_str, "Total": 0, "Advance": 0, "Mid Payment": 0, "Final Payment": 0, "Method": t_from, "Mid Method": t_from, "Final Method": t_from, "Expenses": t_amount, "Type": "Transfer", "Status": "Completed", "Expense Category": "Transfer", "Income Category": "Transfer"}])
+                trans_in = pd.DataFrame([{"Project": f"From {t_from}", "Date": str(t_date), "BS Date": nep_date_str, "Total": 0, "Advance": t_amount, "Mid Payment": 0, "Final Payment": 0, "Method": t_to, "Mid Method": t_to, "Final Method": t_to, "Expenses": 0, "Type": "Transfer", "Status": "Completed", "Expense Category": "Transfer", "Income Category": "Transfer"}])
                 updated_df = pd.concat([df.drop(columns=['Real_Date'], errors='ignore'), trans_out, trans_in], ignore_index=True)
                 conn.update(worksheet="Sheet1", data=updated_df)
                 st.cache_data.clear()
@@ -262,10 +347,14 @@ with tab6:
         person = st.text_input("Name")
         amount = st.number_input("Amount", min_value=1)
         method = st.selectbox("Wallet", ["Cash", "Bank", "eSewa"])
+        loan_date = st.date_input("Date (AD)")
+        
         if st.form_submit_button("Save Loan", use_container_width=True):
             l_adv = 0 if "Lending" in loan_type else amount
             l_exp = amount if "Lending" in loan_type else 0
-            new_loan = pd.DataFrame([{"Project": person, "Date": str(date.today()), "BS Date": str(nepali_datetime.date.today()), "Total": amount, "Advance": l_adv, "Expenses": l_exp, "Type": "Lend" if l_exp > 0 else "Borrow", "Method": method, "Status": "Pending"}])
+            nep_date_str = str(nepali_datetime.date.from_datetime_date(loan_date))
+            
+            new_loan = pd.DataFrame([{"Project": person, "Date": str(loan_date), "BS Date": nep_date_str, "Total": amount, "Advance": l_adv, "Mid Payment": 0, "Final Payment": 0, "Expenses": l_exp, "Type": "Lend" if l_exp > 0 else "Borrow", "Method": method, "Mid Method": method, "Final Method": method, "Status": "Pending", "Expense Category": "General", "Income Category": "Other"}])
             updated_df = pd.concat([df.drop(columns=['Real_Date'], errors='ignore'), new_loan], ignore_index=True)
             conn.update(worksheet="Sheet1", data=updated_df)
             st.cache_data.clear()
@@ -277,10 +366,39 @@ with tab7:
     st.subheader("🧾 Generate Bill")
     shoots_df = df[df['Type'] == 'Shoot'].copy()
     if not shoots_df.empty:
-        client = st.selectbox("Select Client:", shoots_df['Project'].unique())
-        if client:
-            data = shoots_df[shoots_df['Project'] == client].iloc[0]
-            paid = data['Advance'] + data['Mid Payment'] + data['Final Payment']
-            due = data['Total'] - paid
-            invoice = f"SARANGI MEDIA\nProject: {client}\nDate: {data['BS Date']}\nTotal: Rs. {data['Total']:,}\nPaid: Rs. {paid:,}\nDue: Rs. {due:,}"
-            st.text_area("WhatsApp Bill:", value=invoice, height=200)
+        # Only show the MAIN shoots in the dropdown (the ones with actual Total amounts)
+        main_shoots = shoots_df[pd.to_numeric(shoots_df['Total'], errors='coerce') > 0]
+        if not main_shoots.empty:
+            client = st.selectbox("Select Client:", main_shoots['Project'].unique())
+            if client:
+                data = main_shoots[main_shoots['Project'] == client].iloc[0]
+                paid = data['Advance'] + data['Mid Payment'] + data['Final Payment']
+                due = data['Total'] - paid
+                
+                invoice = f"""=================================
+🏢 SARANGI MEDIA HOUSE 🏢
+=================================
+Project: {client}
+Date: {data['BS Date']} (BS) / {data['Date']} (AD)
+---------------------------------
+Total Amount:    Rs. {data['Total']:,}
+
+Advance Paid:    Rs. {data['Advance']:,}"""
+
+                if data['Mid Payment'] > 0:
+                    invoice += f"\nMid Payment:     Rs. {data['Mid Payment']:,}"
+                if data['Final Payment'] > 0:
+                    invoice += f"\nFinal Payment:   Rs. {data['Final Payment']:,}"
+                    
+                invoice += f"""
+---------------------------------
+TOTAL PAID:      Rs. {paid:,}
+REMAINING DUE:   Rs. {due:,}
+=================================
+Thank you for your business! 🙏"""
+                
+                st.text_area("WhatsApp Bill:", value=invoice, height=300)
+        else:
+            st.warning("No projects with a Total Amount to bill yet.")
+    else:
+        st.warning("No projects to bill yet.")
