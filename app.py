@@ -415,11 +415,16 @@ with tab7:
                 paid = data['Advance'] + data['Mid Payment'] + data['Final Payment']
                 due = data['Total'] - paid
                 
+                # Get exact today's date for the Bill
+                today_ad = date.today()
+                today_bs = nepali_datetime.date.today()
+                
                 invoice = f"""=================================
 SARANGI MEDIA HOUSE
 =================================
 Project: {client}
-Date: {data['BS Date']} (BS) / {data['Date']} (AD)
+Shoot Date: {data['BS Date']} (BS) / {data['Date']} (AD)
+Bill Date:  {today_bs} (BS) / {today_ad} (AD)
 ---------------------------------
 Total Amount:    Rs. {data['Total']:,}
 
@@ -438,7 +443,7 @@ REMAINING DUE:   Rs. {due:,}
 Thank you
 SARANGI MEDIA HOUSE🙏"""
                 
-                st.text_area("WhatsApp Bill:", value=invoice, height=300)
+                st.text_area("WhatsApp Bill:", value=invoice, height=320)
         else:
             st.warning("No projects with a Total Amount to bill yet.")
     else:
