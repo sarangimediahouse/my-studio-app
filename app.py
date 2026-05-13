@@ -88,6 +88,9 @@ with tab1:
         st.divider()
        st.subheader("🏦 Wallets")
         
+       st.divider()
+        st.subheader("🏦 Wallets")
+        
         def get_method_balance(m_name):
             # Base sums
             adv_income = df[df['Method'].astype(str).str.strip() == m_name]['Advance'].sum()
