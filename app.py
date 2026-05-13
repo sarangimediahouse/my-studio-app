@@ -28,18 +28,19 @@ except:
     df = pd.DataFrame(columns=["Project", "Date", "Total", "Advance", "Method", "Expenses", "Type"])
 
 # --- TAB SECTIONS ---
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Dashboard", "New Booking", "Ledger", "Add Expense", "Transfer", "🤝 Lend / Borrow"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["Dashboard", "New Booking", "Ledger", "Add Expense", "Transfer", "🤝 Lend / Borrow", "🧾 Invoicing"])
 
 # --- TAB 1: DASHBOARD (Money Overview) ---
 with tab1:
     if not df.empty:
         # 1. Clean the data
-        df['Advance'] = pd.to_numeric(df['Advance'], errors='coerce').fillna(0)
+       df['Advance'] = pd.to_numeric(df['Advance'], errors='coerce').fillna(0)
+        df['Mid Payment'] = pd.to_numeric(df.get('Mid Payment', 0), errors='coerce').fillna(0)
         final_col = 'Final Payment' if 'Final Payment' in df.columns else 'Final_Payment'
         df['Final Payment'] = pd.to_numeric(df.get(final_col, 0), errors='coerce').fillna(0)
         df['Expenses'] = pd.to_numeric(df['Expenses'], errors='coerce').fillna(0)
         df['Total'] = pd.to_numeric(df['Total'], errors='coerce').fillna(0)
-        df['Remaining'] = df['Total'] - (df['Advance'] + df['Final Payment'])
+        df['Remaining'] = df['Total'] - (df['Advance'] + df['Mid Payment'] + df['Final Payment'])
         
         if 'Final Method' not in df.columns:
             df['Final Method'] = df['Method']
@@ -68,9 +69,10 @@ with tab1:
         
         def get_method_balance(m_name):
             adv_income = df[df['Method'].astype(str).str.strip() == m_name]['Advance'].sum()
+            mid_income = df[df.get('Mid Method', '').astype(str).str.strip() == m_name]['Mid Payment'].sum()
             fin_income = df[df['Final Method'].astype(str).str.strip() == m_name]['Final Payment'].sum()
             expense = df[df['Method'].astype(str).str.strip() == m_name]['Expenses'].sum()
-            return (adv_income + fin_income) - expense
+            return (adv_income + mid_income + fin_income) - expense
 
         w1, w2, w3 = st.columns(3)
         w1.metric("Cash Drawer", f"Rs. {get_method_balance('Cash'):,}")
@@ -306,13 +308,13 @@ with tab3:
                 use_container_width=True, 
                 key="l_tab",
                 column_config={
-                    "Type": st.column_config.SelectboxColumn("Type", options=["Lend", "Borrow"]),
-                    "Status": st.column_config.SelectboxColumn("Status", options=["Pending", "Returned", "Settled"]),
-                    "Method": st.column_config.SelectboxColumn("Wallet", options=["Cash", "Bank", "eSewa"]),
-                    "Project": "Person's Name"
+                    "Status": st.column_config.SelectboxColumn("Status", options=["Booked", "Shooting", "Editing", "Completed", "Delivered"]),
+                    "Income Category": st.column_config.SelectboxColumn("Category", options=["Wedding", "Commercial", "Event", "Portrait", "Music Video", "Other"]),
+                    "Method": st.column_config.SelectboxColumn("Adv. Method", options=["Cash", "Bank", "eSewa"]),
+                    "Mid Method": st.column_config.SelectboxColumn("Mid Method", options=["Cash", "Bank", "eSewa"]),
+                    "Final Method": st.column_config.SelectboxColumn("Final Method", options=["Cash", "Bank", "eSewa"])
                 },
-                column_order=["Date", "Type", "Project", "Total", "Method", "Status"]
-            )
+                column_order=["Project", "Income Category", "Date", "Total", "Advance", "Method", "Mid Payment", "Mid Method", "Final Payment", "Final Method", "Remaining", "Status"]
         
         st.divider()
         
@@ -458,3 +460,60 @@ with tab6:
                 st.cache_data.clear()
                 st.success(f"Recorded! Your {loan_method} wallet balance has been updated.")
                 st.rerun()
+                # --- TAB 7: INVOICE & BILLING ---
+with tab7:
+    st.subheader("🧾 Custom Billing & Receipts")
+    st.info("Select a project below to instantly generate a WhatsApp-ready invoice!")
+    
+    # Only get actual shoots
+    if 'Type' in df.columns:
+        shoots_df = df[df['Type'] == 'Shoot'].copy()
+    else:
+        shoots_df = pd.DataFrame()
+        
+    if not shoots_df.empty:
+        client_list = shoots_df['Project'].dropna().unique().tolist()
+        selected_client = st.selectbox("Select Client / Project:", client_list)
+        
+        if selected_client:
+            client_data = shoots_df[shoots_df['Project'] == selected_client].iloc[0]
+            
+            c_total = pd.to_numeric(client_data.get('Total', 0))
+            c_adv = pd.to_numeric(client_data.get('Advance', 0))
+            c_mid = pd.to_numeric(client_data.get('Mid Payment', 0))
+            c_final = pd.to_numeric(client_data.get('Final Payment', 0))
+            
+            c_paid = c_adv + c_mid + c_final
+            c_due = c_total - c_paid
+            
+            # Format the text invoice
+            invoice_text = f"""=================================
+🏢 SARANGI MEDIA HOUSE 🏢
+=================================
+Project: {selected_client}
+Date: {client_data.get('Date', 'TBD')}
+---------------------------------
+Total Amount:    Rs. {c_total:,}
+
+Advance Paid:    Rs. {c_adv:,}"""
+
+            if c_mid > 0:
+                invoice_text += f"\nMid Payment:     Rs. {c_mid:,}"
+            if c_final > 0:
+                invoice_text += f"\nFinal Payment:   Rs. {c_final:,}"
+                
+            invoice_text += f"""
+---------------------------------
+TOTAL PAID:      Rs. {c_paid:,}
+REMAINING DUE:   Rs. {c_due:,}
+=================================
+Thank you for your business! 🙏"""
+
+            st.text_area("📋 Copy this text and paste it into WhatsApp/Email:", value=invoice_text, height=350)
+            
+            if c_due == 0:
+                st.success("🎉 This project is fully paid off!")
+            elif c_due < 0:
+                st.warning("⚠️ Overpaid! The client paid more than the Total Amount.")
+    else:
+        st.warning("No projects available to bill yet.")
