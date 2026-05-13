@@ -28,7 +28,7 @@ except:
     df = pd.DataFrame(columns=["Project", "Date", "Total", "Advance", "Method", "Expenses", "Type"])
 
 # --- TAB SECTIONS ---
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Dashboard", "➕ New Booking", "📜 Ledger", "💸 Add Expense", "🔄 Transfer"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Dashboard", "New Booking", "Ledger", "Add Expense", "Transfer", "🤝 Lend / Borrow"])
 
 # --- TAB 1: DASHBOARD (Money Overview) ---
 with tab1:
@@ -45,7 +45,7 @@ with tab1:
             df['Final Method'] = df['Method']
         df['Final Method'] = df['Final Method'].fillna(df['Method'])
         
-        studio_df = df[df['Type'] != 'Transfer'].copy()
+       studio_df = df[df['Type'].isin(['Shoot', 'Expense'])].copy()
         
         # Give the whole dashboard access to real dates
         studio_df['Real_Date'] = pd.to_datetime(studio_df['Date'].apply(lambda x: str(x).split(', ')[0].split(' ')[0]), errors='coerce')
@@ -274,52 +274,52 @@ with tab3:
             df['Final Method'] = df['Method']
         df['Final Method'] = df['Final Method'].fillna(df['Method'])
 
-        # --- BLANK CATEGORY FIX ---
         if 'Expense Category' not in df.columns:
             df['Expense Category'] = "General"
         df['Expense Category'] = df['Expense Category'].fillna("General")
+        
+        if 'Income Category' not in df.columns:
+            df['Income Category'] = "Other"
+        df['Income Category'] = df['Income Category'].fillna("Other")
             
-        proj_tab, exp_tab, trans_tab = st.tabs(["📸 Projects", "💸 Expenses", "🔄 Transfers"])
+        # --- ADDED LOAN TAB HERE ---
+        proj_tab, exp_tab, trans_tab, loan_tab = st.tabs(["📸 Projects", "💸 Expenses", "🔄 Transfers", "🤝 Loans"])
         
         with proj_tab:
             proj_df = df[df['Type'] == 'Shoot'].reset_index(drop=True)
-            edited_proj = st.data_editor(
-                proj_df, 
-                num_rows="dynamic", 
-                use_container_width=True, 
-                key="p_tab", 
-                column_config={
-                    "Status": st.column_config.SelectboxColumn("Status", options=["Booked", "Shooting", "Editing", "Completed", "Delivered"]),
-                    "Method": st.column_config.SelectboxColumn("Adv. Method", options=["Cash", "Bank", "eSewa"]),
-                    "Final Method": st.column_config.SelectboxColumn("Final Method", options=["Cash", "Bank", "eSewa"])
-                },
-                column_order=["Project", "Date", "Total", "Advance", "Method", "Final Payment", "Final Method", "Remaining", "Status"]
-            )
+            edited_proj = st.data_editor(proj_df, num_rows="dynamic", use_container_width=True, key="p_tab")
             
         with exp_tab:
             exp_df = df[df['Type'] == 'Expense'].reset_index(drop=True)
-            edited_exp = st.data_editor(
-                exp_df, 
-                num_rows="dynamic", 
-                use_container_width=True, 
-                key="e_tab",
-                column_config={
-                    "Project": "Expense Details", 
-                    "Method": "Paid From",
-                    "Expense Category": st.column_config.SelectboxColumn("Category", options=["Gear & Tech", "Travel & Fuel", "Freelancers", "Rent & Utilities", "Marketing", "Meals", "General"])
-                },
-                column_order=["Date", "Expense Category", "Project", "Method", "Expenses"] 
-            )
+            edited_exp = st.data_editor(exp_df, num_rows="dynamic", use_container_width=True, key="e_tab")
             
         with trans_tab:
             trans_df = df[df['Type'] == 'Transfer'].reset_index(drop=True)
             edited_trans = st.data_editor(trans_df, num_rows="dynamic", use_container_width=True, key="t_tab")
+            
+        # --- NEW LOANS LEDGER ---
+        with loan_tab:
+            loan_df = df[df['Type'].isin(['Lend', 'Borrow'])].reset_index(drop=True)
+            edited_loans = st.data_editor(
+                loan_df, 
+                num_rows="dynamic", 
+                use_container_width=True, 
+                key="l_tab",
+                column_config={
+                    "Type": st.column_config.SelectboxColumn("Type", options=["Lend", "Borrow"]),
+                    "Status": st.column_config.SelectboxColumn("Status", options=["Pending", "Returned", "Settled"]),
+                    "Method": st.column_config.SelectboxColumn("Wallet", options=["Cash", "Bank", "eSewa"]),
+                    "Project": "Person's Name"
+                },
+                column_order=["Date", "Type", "Project", "Total", "Method", "Status"]
+            )
         
         st.divider()
         
         if st.button("💾 Save All Ledgers"):
-            other_df = df[~df['Type'].isin(['Shoot', 'Expense', 'Transfer'])]
-            updated_master_df = pd.concat([edited_proj, edited_exp, edited_trans, other_df], ignore_index=True)
+            # Update to save the loans too!
+            other_df = df[~df['Type'].isin(['Shoot', 'Expense', 'Transfer', 'Lend', 'Borrow'])]
+            updated_master_df = pd.concat([edited_proj, edited_exp, edited_trans, edited_loans, other_df], ignore_index=True)
             conn.update(worksheet="Sheet1", data=updated_master_df)
             st.cache_data.clear()
             st.success("Ledgers saved successfully!")
@@ -407,4 +407,54 @@ with tab5:
                 updated_df = pd.concat([df, row_out, row_in], ignore_index=True)
                 conn.update(worksheet="Sheet1", data=updated_df)
                 st.success(f"Transferred Rs. {t_amount} from {from_acc} to {to_acc}!")
+                st.rerun()
+# --- TAB 6: LEND & BORROW ---
+with tab6:
+    st.subheader("🤝 Lend & Borrow Money")
+    st.info("💡 Money logged here will update your Wallet balances, but will NOT affect your Studio Profit charts!")
+    
+    with st.form("loan_form", clear_on_submit=True):
+        loan_type = st.radio("What are you doing?", ["Lending Money (Giving OUT to a friend)", "Borrowing Money (Receiving IN from a friend)"])
+        person_name = st.text_input("Who is this with?", placeholder="Friend's Name")
+        loan_amount = st.number_input("Amount (NPR)", min_value=1)
+        
+        c1, c2 = st.columns(2)
+        loan_date = c1.date_input("Date")
+        loan_method = c2.selectbox("Wallet Used", ["Cash", "Bank", "eSewa"])
+        
+        if st.form_submit_button("Save Record"):
+            if not person_name:
+                st.error("⚠️ Please enter a name!")
+            else:
+                if "Lending" in loan_type:
+                    # Giving money out (subtracts from wallet)
+                    l_adv = 0
+                    l_exp = loan_amount
+                    l_tag = "Lend"
+                else:
+                    # Receiving money in (adds to wallet)
+                    l_adv = loan_amount
+                    l_exp = 0
+                    l_tag = "Borrow"
+                    
+                new_loan = pd.DataFrame([{
+                    "Project": person_name, 
+                    "Date": str(loan_date),
+                    "BS Date": str(nepali_datetime.date.from_datetime_date(loan_date)),
+                    "Total": loan_amount, 
+                    "Advance": l_adv, 
+                    "Final Payment": 0,
+                    "Method": loan_method, 
+                    "Final Method": loan_method,
+                    "Expenses": l_exp, 
+                    "Type": l_tag,
+                    "Status": "Pending",
+                    "Expense Category": "General",
+                    "Income Category": "Other"
+                }])
+                
+                updated_df = pd.concat([df, new_loan], ignore_index=True)
+                conn.update(worksheet="Sheet1", data=updated_df)
+                st.cache_data.clear()
+                st.success(f"Recorded! Your {loan_method} wallet balance has been updated.")
                 st.rerun()
