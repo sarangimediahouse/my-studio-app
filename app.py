@@ -422,9 +422,10 @@ with tab7:
                 invoice = f"""=================================
 SARANGI MEDIA HOUSE
 =================================
-Project: {client}
-Shoot Date: {data['BS Date']} (BS) / {data['Date']} (AD)
 Bill Date:  {today_bs} (BS) / {today_ad} (AD)
+Shoot Date: {data['BS Date']} (BS) / {data['Date']} (AD)
+---------------------------------
+Project: {client}
 ---------------------------------
 Total Amount:    Rs. {data['Total']:,}
 
