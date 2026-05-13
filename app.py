@@ -348,7 +348,7 @@ with tab7:
             c_due = c_total - c_paid
             
             invoice_text = f"""=================================
-🏢 SARANGI MEDIA HOUSE 🏢
+SARANGI MEDIA HOUSE
 =================================
 Project: {selected_client}
 Date: {client_data.get('Date', 'TBD')}
@@ -367,7 +367,7 @@ Advance Paid:    Rs. {c_adv:,}"""
 TOTAL PAID:      Rs. {c_paid:,}
 REMAINING DUE:   Rs. {c_due:,}
 =================================
-Thank you for your business! 🙏"""
+Thank you SARANGI MEDIA HOUSE🙏"""
 
             st.text_area("📋 Copy this text and paste it into WhatsApp:", value=invoice_text, height=350)
             
