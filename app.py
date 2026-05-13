@@ -45,7 +45,7 @@ with tab1:
             df['Final Method'] = df['Method']
         df['Final Method'] = df['Final Method'].fillna(df['Method'])
         
-       studio_df = df[df['Type'].isin(['Shoot', 'Expense'])].copy()
+        studio_df = df[df['Type'].isin(['Shoot', 'Expense'])].copy()
         
         # Give the whole dashboard access to real dates
         studio_df['Real_Date'] = pd.to_datetime(studio_df['Date'].apply(lambda x: str(x).split(', ')[0].split(' ')[0]), errors='coerce')
