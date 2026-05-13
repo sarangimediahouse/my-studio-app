@@ -17,7 +17,7 @@ with col1:
         st.write("🎥") 
 with col2:
     st.title("SARANGI MEDIA HOUSE")
-with col3:
+with col2:
     st.title("DASHBOARD")
 
 # --- DATABASE CONNECTION ---
