@@ -7,7 +7,16 @@ from streamlit_gsheets import GSheetsConnection
 
 # --- SETUP & PAGE CONFIG ---
 st.set_page_config(page_title="Sarangi Media House", page_icon="🎥", layout="wide")
-st.title("🎥 Sarangi Media House Dashboard")
+
+# --- LOGO & TITLE ---
+col1, col2 = st.columns([1, 8])
+with col1:
+    try:
+        st.image("sarangi.png", use_container_width=True) 
+    except:
+        st.write("🎥") 
+with col2:
+    st.title("Sarangi Media House Dashboard")
 
 # --- DATABASE CONNECTION ---
 conn = st.connection("gsheets", type=GSheetsConnection)
@@ -36,7 +45,7 @@ df['Mid Method'] = df['Mid Method'].fillna(df['Method'])
 df['Expense Category'] = df['Expense Category'].fillna("General")
 df['Income Category'] = df['Income Category'].fillna("Other")
 
-# Give the whole dashboard access to real dates for filtering
+# Use English date for hidden math/filtering
 df['Real_Date'] = pd.to_datetime(df['Date'].apply(lambda x: str(x).split(', ')[0].split(' ')[0]), errors='coerce')
 
 # --- TABS MENU ---
@@ -47,21 +56,19 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
 # --- TAB 1: DASHBOARD ---
 with tab1:
     if not df.empty:
-        # Ignore transfers and loans for Studio Profit
         studio_df = df[df['Type'].isin(['Shoot', 'Expense'])].copy()
         
         total_collected = studio_df["Advance"].sum() + studio_df["Mid Payment"].sum() + studio_df["Final Payment"].sum()
         total_spent = studio_df["Expenses"].sum()
         available_balance = total_collected - total_spent
         
-        # Safe pending calculation (only counts actual shoots)
         total_pending = df[(df['Type'] == 'Shoot') & (df['Remaining'] > 0)]['Remaining'].sum()
 
         st.subheader("💰 Studio Overview")
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Total Available Cash", f"Rs. {available_balance:,}")
-        col2.metric("Pending from Clients", f"Rs. {total_pending:,}")
-        col3.metric("Total Expenses", f"Rs. {total_spent:,}")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Total Available Cash", f"Rs. {available_balance:,}")
+        c2.metric("Pending from Clients", f"Rs. {total_pending:,}")
+        c3.metric("Total Expenses", f"Rs. {total_spent:,}")
 
         st.divider()
         st.subheader("🏦 Where is my money?")
@@ -78,7 +85,6 @@ with tab1:
         w2.metric("Bank Account", f"Rs. {get_method_balance('Bank'):,}")
         w3.metric("eSewa", f"Rs. {get_method_balance('eSewa'):,}")
 
-        # Quick Performance Tracker
         st.divider()
         st.subheader("⏱️ Quick Performance Tracker")
         time_filter = st.radio("Select Timeframe:", ["Today", "Yesterday", "Last 2 Days", "Last 7 Days", "This Month"], horizontal=True)
@@ -104,14 +110,14 @@ with tab1:
         q2.metric(f"Expenses ({time_filter})", f"Rs. {t_expense:,}")
         q3.metric(f"Net Profit ({time_filter})", f"Rs. {t_profit:,}")
 
-        # Upcoming Schedule
         st.divider()
         st.subheader("📅 Upcoming Shoot Schedule")
         upcoming = df[df['Type'] == "Shoot"].copy()
         upcoming = upcoming[upcoming['Real_Date'] >= today].sort_values('Real_Date')
-        st.table(upcoming[['Date', 'Project', 'Status', 'Total', 'Remaining']].head(5))
+        # Displaying BOTH BS Date and English Date
+        upcoming = upcoming.rename(columns={"Date": "AD Date"})
+        st.table(upcoming[['BS Date', 'AD Date', 'Project', 'Status', 'Total', 'Remaining']].head(5))
 
-        # Monthly Chart
         st.divider()
         st.subheader("📈 Monthly Cash Flow & Profit")
         chart_data = studio_df.dropna(subset=['Real_Date']).copy()
@@ -151,7 +157,7 @@ with tab2:
         inc_cat = st.selectbox("Shoot Category", ["Wedding", "Commercial", "Event", "Portrait", "Music Video", "Other"])
         
         col1, col2 = st.columns(2)
-        eng_date = col1.date_input("Date of Shoot")
+        eng_date = col1.date_input("Date (AD -> Auto-converts to BS)")
         
         col3, col4, col5 = st.columns(3)
         total_val = col3.number_input("Total Amount", min_value=0)
@@ -173,7 +179,7 @@ with tab2:
                 updated_df = pd.concat([df.drop(columns=['Real_Date'], errors='ignore'), new_row], ignore_index=True)
                 conn.update(worksheet="Sheet1", data=updated_df)
                 st.cache_data.clear()
-                st.success("Booking saved!")
+                st.success(f"Booking saved! Converted to BS Date: {nep_date_str}")
                 st.rerun()
 
 # --- TAB 3: LEDGER ---
@@ -189,13 +195,14 @@ with tab3:
             edited_proj = st.data_editor(
                 proj_df, num_rows="dynamic", use_container_width=True, key="p_tab",
                 column_config={
+                    "Date": "AD Date",
                     "Status": st.column_config.SelectboxColumn("Status", options=["Booked", "Shooting", "Editing", "Completed", "Delivered"]),
                     "Income Category": st.column_config.SelectboxColumn("Category", options=["Wedding", "Commercial", "Event", "Portrait", "Music Video", "Other"]),
                     "Method": st.column_config.SelectboxColumn("Adv. Method", options=["Cash", "Bank", "eSewa"]),
                     "Mid Method": st.column_config.SelectboxColumn("Mid Method", options=["Cash", "Bank", "eSewa"]),
                     "Final Method": st.column_config.SelectboxColumn("Final Method", options=["Cash", "Bank", "eSewa"])
                 },
-                column_order=["Project", "Income Category", "Date", "Total", "Advance", "Method", "Mid Payment", "Mid Method", "Final Payment", "Final Method", "Remaining", "Status"]
+                column_order=["Project", "Income Category", "BS Date", "Date", "Total", "Advance", "Method", "Mid Payment", "Mid Method", "Final Payment", "Final Method", "Remaining", "Status"]
             )
             
         with exp_tab:
@@ -203,25 +210,31 @@ with tab3:
             edited_exp = st.data_editor(
                 exp_df, num_rows="dynamic", use_container_width=True, key="e_tab",
                 column_config={
+                    "Date": "AD Date",
                     "Expense Category": st.column_config.SelectboxColumn("Category", options=["Gear & Tech", "Travel & Fuel", "Freelancers", "Rent & Utilities", "Marketing", "Meals", "General"])
                 },
-                column_order=["Date", "Expense Category", "Project", "Method", "Expenses"]
+                column_order=["BS Date", "Date", "Expense Category", "Project", "Method", "Expenses"]
             )
             
         with trans_tab:
             trans_df = df_display[df_display['Type'] == 'Transfer'].reset_index(drop=True)
-            edited_trans = st.data_editor(trans_df, num_rows="dynamic", use_container_width=True, key="t_tab")
+            edited_trans = st.data_editor(
+                trans_df, num_rows="dynamic", use_container_width=True, key="t_tab",
+                column_config={"Date": "AD Date"},
+                column_order=["BS Date", "Date", "Project", "Method", "Final Method", "Expenses", "Advance"]
+            )
             
         with loan_tab:
             loan_df = df_display[df_display['Type'].isin(['Lend', 'Borrow'])].reset_index(drop=True)
             edited_loans = st.data_editor(
                 loan_df, num_rows="dynamic", use_container_width=True, key="l_tab",
                 column_config={
+                    "Date": "AD Date",
                     "Type": st.column_config.SelectboxColumn("Type", options=["Lend", "Borrow"]),
                     "Status": st.column_config.SelectboxColumn("Status", options=["Pending", "Returned", "Settled"]),
                     "Method": st.column_config.SelectboxColumn("Wallet", options=["Cash", "Bank", "eSewa"])
                 },
-                column_order=["Date", "Type", "Project", "Total", "Method", "Status"]
+                column_order=["BS Date", "Date", "Type", "Project", "Total", "Method", "Status"]
             )
         
         st.divider()
@@ -241,7 +254,7 @@ with tab4:
         ex_amount = st.number_input("Amount Paid (NPR)", min_value=1)
         
         c1, c2, c3 = st.columns(3)
-        ex_date = c1.date_input("Date Paid")
+        ex_date = c1.date_input("Date Paid (AD)")
         ex_method = c2.selectbox("Paid From", ["Cash", "Bank", "eSewa"])
         ex_cat = c3.selectbox("Category", ["Gear & Tech", "Travel & Fuel", "Freelancers", "Rent & Utilities", "Marketing", "Meals", "General"])
         
@@ -249,8 +262,9 @@ with tab4:
             if not ex_desc:
                 st.error("Please enter a description!")
             else:
+                nep_date_str = str(nepali_datetime.date.from_datetime_date(ex_date))
                 new_ex = pd.DataFrame([{
-                    "Project": ex_desc, "Date": str(ex_date), "BS Date": str(nepali_datetime.date.from_datetime_date(ex_date)),
+                    "Project": ex_desc, "Date": str(ex_date), "BS Date": nep_date_str,
                     "Total": 0, "Advance": 0, "Mid Payment": 0, "Final Payment": 0,
                     "Method": ex_method, "Mid Method": ex_method, "Final Method": ex_method,
                     "Expenses": ex_amount, "Type": "Expense", "Status": "Completed",
@@ -268,7 +282,7 @@ with tab5:
     with st.form("transfer_form", clear_on_submit=True):
         t_amount = st.number_input("Amount", min_value=1)
         c1, c2, c3 = st.columns(3)
-        t_date = c1.date_input("Date")
+        t_date = c1.date_input("Date (AD)")
         t_from = c2.selectbox("From", ["Cash", "Bank", "eSewa"])
         t_to = c3.selectbox("To", ["Bank", "eSewa", "Cash"])
         
@@ -276,10 +290,9 @@ with tab5:
             if t_from == t_to:
                 st.error("Cannot transfer to the same wallet!")
             else:
-                # Subtract from source
-                trans_out = pd.DataFrame([{"Project": f"Transfer to {t_to}", "Date": str(t_date), "BS Date": str(nepali_datetime.date.from_datetime_date(t_date)), "Total": 0, "Advance": 0, "Mid Payment": 0, "Final Payment": 0, "Method": t_from, "Mid Method": t_from, "Final Method": t_from, "Expenses": t_amount, "Type": "Transfer", "Status": "Completed", "Expense Category": "Transfer", "Income Category": "Transfer"}])
-                # Add to destination
-                trans_in = pd.DataFrame([{"Project": f"Transfer from {t_from}", "Date": str(t_date), "BS Date": str(nepali_datetime.date.from_datetime_date(t_date)), "Total": 0, "Advance": t_amount, "Mid Payment": 0, "Final Payment": 0, "Method": t_to, "Mid Method": t_to, "Final Method": t_to, "Expenses": 0, "Type": "Transfer", "Status": "Completed", "Expense Category": "Transfer", "Income Category": "Transfer"}])
+                nep_date_str = str(nepali_datetime.date.from_datetime_date(t_date))
+                trans_out = pd.DataFrame([{"Project": f"Transfer to {t_to}", "Date": str(t_date), "BS Date": nep_date_str, "Total": 0, "Advance": 0, "Mid Payment": 0, "Final Payment": 0, "Method": t_from, "Mid Method": t_from, "Final Method": t_from, "Expenses": t_amount, "Type": "Transfer", "Status": "Completed", "Expense Category": "Transfer", "Income Category": "Transfer"}])
+                trans_in = pd.DataFrame([{"Project": f"Transfer from {t_from}", "Date": str(t_date), "BS Date": nep_date_str, "Total": 0, "Advance": t_amount, "Mid Payment": 0, "Final Payment": 0, "Method": t_to, "Mid Method": t_to, "Final Method": t_to, "Expenses": 0, "Type": "Transfer", "Status": "Completed", "Expense Category": "Transfer", "Income Category": "Transfer"}])
                 
                 updated_df = pd.concat([df.drop(columns=['Real_Date'], errors='ignore'), trans_out, trans_in], ignore_index=True)
                 conn.update(worksheet="Sheet1", data=updated_df)
@@ -297,7 +310,7 @@ with tab6:
         loan_amount = st.number_input("Amount (NPR)", min_value=1)
         
         c1, c2 = st.columns(2)
-        loan_date = c1.date_input("Date")
+        loan_date = c1.date_input("Date (AD)")
         loan_method = c2.selectbox("Wallet Used", ["Cash", "Bank", "eSewa"])
         
         if st.form_submit_button("Save Record"):
@@ -307,9 +320,10 @@ with tab6:
                 l_adv = 0 if "Lending" in loan_type else loan_amount
                 l_exp = loan_amount if "Lending" in loan_type else 0
                 l_tag = "Lend" if "Lending" in loan_type else "Borrow"
+                nep_date_str = str(nepali_datetime.date.from_datetime_date(loan_date))
                     
                 new_loan = pd.DataFrame([{
-                    "Project": person_name, "Date": str(loan_date), "BS Date": str(nepali_datetime.date.from_datetime_date(loan_date)),
+                    "Project": person_name, "Date": str(loan_date), "BS Date": nep_date_str,
                     "Total": loan_amount, "Advance": l_adv, "Mid Payment": 0, "Final Payment": 0,
                     "Method": loan_method, "Mid Method": loan_method, "Final Method": loan_method,
                     "Expenses": l_exp, "Type": l_tag, "Status": "Pending",
@@ -347,11 +361,15 @@ with tab7:
             c_paid = c_adv + c_mid + c_final
             c_due = c_total - c_paid
             
+            # Using BOTH BS and AD Dates for the invoice
+            bs_date_val = client_data.get('BS Date', 'TBD')
+            ad_date_val = client_data.get('Date', 'TBD')
+            
             invoice_text = f"""=================================
-SARANGI MEDIA HOUSE
+🏢 SARANGI MEDIA HOUSE 🏢
 =================================
 Project: {selected_client}
-Date: {client_data.get('Date', 'TBD')}
+Date: {bs_date_val} (BS) / {ad_date_val} (AD)
 ---------------------------------
 Total Amount:    Rs. {c_total:,}
 
@@ -367,8 +385,7 @@ Advance Paid:    Rs. {c_adv:,}"""
 TOTAL PAID:      Rs. {c_paid:,}
 REMAINING DUE:   Rs. {c_due:,}
 =================================
-Thank you 
-SARANGI MEDIA HOUSE🙏"""
+Thank you for your business! 🙏"""
 
             st.text_area("📋 Copy this text and paste it into WhatsApp:", value=invoice_text, height=350)
             
