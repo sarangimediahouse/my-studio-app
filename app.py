@@ -376,7 +376,7 @@ with tab7:
                 due = data['Total'] - paid
                 
                 invoice = f"""=================================
-🏢 SARANGI MEDIA HOUSE 🏢
+SARANGI MEDIA HOUSE
 =================================
 Project: {client}
 Date: {data['BS Date']} (BS) / {data['Date']} (AD)
@@ -395,7 +395,8 @@ Advance Paid:    Rs. {data['Advance']:,}"""
 TOTAL PAID:      Rs. {paid:,}
 REMAINING DUE:   Rs. {due:,}
 =================================
-Thank you for your business! 🙏"""
+Thank you
+SARANGI MEDIA HOUSE🙏"""
                 
                 st.text_area("WhatsApp Bill:", value=invoice, height=300)
         else:
