@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 from streamlit_gsheets import GSheetsConnection
 
 # --- SETUP & PAGE CONFIG ---
-st.set_page_config(page_title="Sarangi Media House", page_icon="🎥", layout="wide")
+st.set_page_config(page_title="Sarangi Media Hous", page_icon="🎥", layout="wide")
 
 # --- LOGO & TITLE ---
 col1, col2 = st.columns([1, 8])
@@ -16,7 +16,9 @@ with col1:
     except:
         st.write("🎥") 
 with col2:
-    st.title("Sarangi Media House Dashboard")
+    st.title("SARANGI MEDIA HOUSE Dashboard")
+with col2:
+    st.title("Dashboard")
 
 # --- DATABASE CONNECTION ---
 conn = st.connection("gsheets", type=GSheetsConnection)
