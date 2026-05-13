@@ -86,15 +86,20 @@ with tab1:
             c3.metric("Total Expenses", f"Rs. {total_spent:,}")
 
         st.divider()
-        def get_method_balance(m_name):
-            # Ignore loans that have been returned so the money goes back to normal!
-            active_df = df[~((df['Type'].isin(['Lend', 'Borrow'])) & (df['Status'].isin(['Returned', 'Settled'])))]
-
-            adv_income = active_df[active_df['Method'].astype(str).str.strip() == m_name]['Advance'].sum()
-            mid_income = active_df[active_df['Mid Method'].astype(str).str.strip() == m_name]['Mid Payment'].sum()
-            fin_income = active_df[active_df['Final Method'].astype(str).str.strip() == m_name]['Final Payment'].sum()
-            expense = active_df[active_df['Method'].astype(str).str.strip() == m_name]['Expenses'].sum()
-            return (adv_income + mid_income + fin_income) - expense
+       def get_method_balance(m_name):
+            # Base sums (includes Shoots, Expenses, Transfers, and INITIAL Loans)
+            adv_income = df[df['Method'].astype(str).str.strip() == m_name]['Advance'].sum()
+            mid_income = df[df['Mid Method'].astype(str).str.strip() == m_name]['Mid Payment'].sum()
+            fin_income = df[df['Final Method'].astype(str).str.strip() == m_name]['Final Payment'].sum()
+            expense = df[df['Method'].astype(str).str.strip() == m_name]['Expenses'].sum()
+            
+            balance = (adv_income + mid_income + fin_income) - expense
+            
+            # Adjustment for RETURNED LOANS based on the Return Wallet
+            lend_returned = df[(df['Type'] == 'Lend') & (df['Status'].isin(['Returned', 'Settled'])) & (df['Final Method'].astype(str).str.strip() == m_name)]['Total'].sum()
+            borrow_returned = df[(df['Type'] == 'Borrow') & (df['Status'].isin(['Returned', 'Settled'])) & (df['Final Method'].astype(str).str.strip() == m_name)]['Total'].sum()
+            
+            return balance + lend_returned - borrow_returned
 
         w1, w2, w3 = st.columns(3)
         w1.metric("Cash", f"Rs. {get_method_balance('Cash'):,}")
@@ -311,9 +316,10 @@ with tab3:
                     "Date": "AD Date",
                     "Type": st.column_config.SelectboxColumn(options=["Lend", "Borrow"]),
                     "Status": st.column_config.SelectboxColumn(options=["Pending", "Returned", "Settled"]),
-                    "Method": st.column_config.SelectboxColumn(options=["Cash", "Bank", "eSewa"])
+                    "Method": st.column_config.SelectboxColumn("Original Wallet", options=["Cash", "Bank", "eSewa"]),
+                    "Final Method": st.column_config.SelectboxColumn("Return Wallet", options=["Cash", "Bank", "eSewa"])
                 },
-                column_order=["BS Date", "Date", "Type", "Project", "Total", "Method", "Status"]
+                column_order=["BS Date", "Date", "Type", "Project", "Total", "Method", "Final Method", "Status"]
             )
         
         if st.button("💾 Save All Ledgers", use_container_width=True):
