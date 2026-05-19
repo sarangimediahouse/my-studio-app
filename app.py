@@ -184,7 +184,6 @@ with tab2:
         @st.fragment()
         def render_money_fields():
             c_layout1, c_layout2 = st.columns([2, 1])
-            # We use global so the main form submit button can still read what you typed
             global name, inc_cat, total_val, adv_val, method
             
             name = c_layout1.text_input("Main Client Name (e.g. Rahul & Priya)", key="studio_client_name")
@@ -193,13 +192,11 @@ with tab2:
             c_money1, c_money2, c_money3 = st.columns(3)
             total_val = c_money1.number_input("Total Amount", min_value=0, key="studio_total_amount")
             
-            # Instantly calculate 25% based on what is currently typed inside the total box
             calculated_advance = int(total_val * 0.25)
             
             adv_val = c_money2.number_input("Booking Advance (25%)", min_value=0, value=calculated_advance, key="studio_advance_amount")
             method = c_money3.selectbox("Payment Method", ["Cash", "Bank", "eSewa"], key="studio_payment_method")
 
-        # Run the live zone
         render_money_fields()
 
         st.markdown("---")
