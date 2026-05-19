@@ -496,3 +496,70 @@ SARANGI MEDIA HOUSE🙏"""
             st.warning("No projects with a Total Amount to bill yet.")
     else:
         st.warning("No projects to bill yet.")
+
+    # --- ✍️ DIGITAL QUOTATION / DEAL MEMO BUILDER ---
+    st.divider()
+    st.subheader("✍️ Create Deal Quotation")
+    st.caption("Generate a professional quote or contract proposal for prospective clients.")
+    
+    with st.form("quote_form"):
+        if is_mobile:
+            q_client = st.text_input("Prospective Client Name")
+            q_service = st.selectbox("Package / Type", ["Wedding Photography", "Cinematography Combo", "Commercial Shoot", "Music Video Production", "Custom Event"])
+            q_price = st.number_input("Quoted Price (NPR)", min_value=0)
+            q_advance = st.selectbox("Required Advance %", ["50% Advance Payment", "30% Advance Payment", "20% Advance Payment", "No Advance Required"])
+            q_raw = st.radio("Raw Files Policy:", ["Raw data will be provided via client drive", "Raw files are not shared (Only edited versions)"], horizontal=True)
+            q_delivery = st.text_input("Estimated Delivery Time", value="3 to 4 Weeks")
+        else:
+            col_q1, col_q2 = st.columns(2)
+            q_client = col_q1.text_input("Prospective Client Name")
+            q_service = col_q2.selectbox("Package / Type", ["Wedding Photography", "Cinematography Combo", "Commercial Shoot", "Music Video Production", "Custom Event"])
+            
+            col_q3, col_q4, col_q5 = st.columns(3)
+            q_price = col_q3.number_input("Quoted Price (NPR)", min_value=0)
+            q_advance = col_q4.selectbox("Required Advance %", ["50% Advance Payment", "30% Advance Payment", "20% Advance Payment", "No Advance Required"])
+            q_delivery = col_q5.text_input("Estimated Delivery Time", value="3 to 4 Weeks")
+            
+            q_raw = st.radio("Raw Files Policy:", ["Raw data will be provided via client drive", "Raw files are not shared (Only edited versions)"], horizontal=True)
+
+        q_notes = st.text_area("Custom Inclusions / Notes", placeholder="e.g., 1 Lead Photographer, 1 Cinematographer, Drone included for Main Day.")
+
+        if st.form_submit_button("Generate Quotation", use_container_width=True):
+            if not q_client:
+                st.error("Please enter a prospective client name!")
+            else:
+                today_ad = date.today()
+                today_bs = nepali_datetime.date.today()
+                
+                quote_text = f"""=================================
+💼 SARANGI MEDIA HOUSE 💼
+       QUOTATION / PROPOSAL
+=================================
+Date: {today_bs} (BS) / {today_ad} (AD)
+Prepared For: {q_client}
+Project Type: {q_service}
+---------------------------------
+💰 COMMERCIAL TERMS:
+Total Package Value:  Rs. {q_price:,}
+Booking Terms:        {q_advance}
+---------------------------------
+🛠️ SERVICE POLICIES:
+Timeline:   {q_delivery} after event completion
+Data:       {q_raw}"""
+
+                if q_notes:
+                    quote_text += f"\n\n📋 CUSTOM INCLUSIONS & NOTES:\n{q_notes}"
+
+                quote_text += """\n=================================
+*This proposal is valid for 15 days.*
+To lock your dates, kindly confirm via advance payment.
+
+Looking forward to working with you! 🙏
+SARANGI MEDIA HOUSE"""
+                
+                st.session_state['generated_quote'] = quote_text
+
+    # Display the quotation box outside the form if it has been generated
+    if 'generated_quote' in st.session_state and st.session_state['generated_quote']:
+        st.markdown("**📋 Generated Proposal (Copy text below):**")
+        st.text_area("Copy Paste to WhatsApp:", value=st.session_state['generated_quote'], height=350)
