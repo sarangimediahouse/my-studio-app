@@ -66,12 +66,28 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(tab_names)
 
 # --- TAB 1: DASHBOARD ---
 with tab1:
-    if not df.empty:
-        studio_df = df[df['Type'].isin(['Shoot', 'Expense'])].copy()
-        total_collected = studio_df["Advance"].sum() + studio_df["Mid Payment"].sum() + studio_df["Final Payment"].sum()
-        total_spent = studio_df["Expenses"].sum()
-        available_balance = total_collected - total_spent
+   if not df.empty:
+        # Define the exact smart wallet function first so the overview can use it
+        def get_method_balance(m_name):
+            adv_income = df[df['Method'].astype(str).str.strip() == m_name]['Advance'].sum()
+            mid_income = df[df['Mid Method'].astype(str).str.strip() == m_name]['Mid Payment'].sum()
+            fin_income = df[df['Final Method'].astype(str).str.strip() == m_name]['Final Payment'].sum()
+            expense = df[df['Method'].astype(str).str.strip() == m_name]['Expenses'].sum()
+            
+            balance = (adv_income + mid_income + fin_income) - expense
+            
+            lend_returned = df[(df['Type'] == 'Lend') & (df['Status'].isin(['Returned', 'Settled'])) & (df['Final Method'].astype(str).str.strip() == m_name)]['Total'].sum()
+            borrow_returned = df[(df['Type'] == 'Borrow') & (df['Status'].isin(['Returned', 'Settled'])) & (df['Final Method'].astype(str).str.strip() == m_name)]['Total'].sum()
+            
+            return balance + lend_returned - borrow_returned
+
+        # Overview calculation is now the exact sum of all wallets!
+        available_balance = get_method_balance('Cash') + get_method_balance('Bank') + get_method_balance('eSewa')
         total_pending = df[(df['Type'] == 'Shoot') & (df['Remaining'] > 0)]['Remaining'].sum()
+        
+        # Calculate total expenses safely for display
+        studio_df = df[df['Type'].isin(['Shoot', 'Expense'])].copy()
+        total_spent = studio_df["Expenses"].sum()
 
         st.subheader("💰 Studio Overview")
         if is_mobile:
