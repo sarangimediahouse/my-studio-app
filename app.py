@@ -175,6 +175,16 @@ with tab1:
 with tab2:
     st.subheader("📝 New Booking")
     st.caption("Book one client and add up to 5 different shoot dates at once!")
+    # 🧠 Initialize state and define calculation BEFORE the form starts
+    if "studio_total_amount" not in st.session_state:
+        st.session_state.studio_total_amount = 0
+    if "studio_advance_amount" not in st.session_state:
+        st.session_state.studio_advance_amount = 0
+
+    # Auto calculation logic
+    if 'studio_total_amount' in st.session_state:
+        st.session_state.studio_advance_amount = int(st.session_state.studio_total_amount * 0.25)
+
     with st.form("booking_form", clear_on_submit=True):
         
         st.markdown("**Client Details & Money**")
@@ -185,16 +195,8 @@ with tab2:
         inc_cat = c_layout2.selectbox("Category", ["Wedding", "Commercial", "Event", "Portrait", "Music Video", "Other"], key="studio_category")
         
         c_money1, c_money2, c_money3 = st.columns(3)
-        # 🧠 The Live Math Brain
-        def calculate_25_percent():
-            st.session_state.studio_advance_amount = int(st.session_state.studio_total_amount * 0.25)
-
-        # Total Amount box now triggers the calculation live
-        total_val = c_money1.number_input("Total Amount", min_value=0, key="studio_total_amount", on_change=calculate_25_percent)
-        
-        # Advance box reads directly from the live math brain
+        total_val = c_money1.number_input("Total Amount", min_value=0, key="studio_total_amount")
         adv_val = c_money2.number_input("Booking Advance (25%)", min_value=0, key="studio_advance_amount")
-        
         method = c_money3.selectbox("Payment Method", ["Cash", "Bank", "eSewa"], key="studio_payment_method")
 
         st.markdown("---")
