@@ -178,7 +178,7 @@ with tab2:
     with st.form("booking_form", clear_on_submit=True):
         
         st.markdown("**Client Details & Money**")
-        if is_mobile:
+        if:
             name = st.text_input("Main Client Name (e.g. Rahul & Priya)", key="mob_name")
             inc_cat = st.selectbox("Category", ["Wedding", "Commercial", "Event", "Portrait", "Music Video", "Other"], key="mob_cat")
             total_val = st.number_input("Total Amount", min_value=0, key="mob_total")
