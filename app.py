@@ -176,20 +176,25 @@ with tab2:
     st.subheader("📝 New Booking")
     st.caption("Book one client and add up to 5 different shoot dates at once!")
     
+    # 🧠 THE LIVE MATH BRAIN (Calculates 25% instantly)
+    def update_advance():
+        if "studio_total_amount" in st.session_state:
+            st.session_state.studio_advance_amount = int(st.session_state.studio_total_amount * 0.25)
+
     st.markdown("**Client Details & Money**")
     
-    # This unified layout scales beautifully on both desktop and mobile web screens
+    # Unified layout for desktop and mobile web screens
     c_layout1, c_layout2 = st.columns([2, 1])
     name = c_layout1.text_input("Main Client Name (e.g. Rahul & Priya)", key="studio_client_name")
     inc_cat = c_layout2.selectbox("Category", ["Wedding", "Commercial", "Event", "Portrait", "Music Video", "Other"], key="studio_category")
     
     c_money1, c_money2, c_money3 = st.columns(3)
-    total_val = c_money1.number_input("Total Amount", min_value=0, key="studio_total_amount")
     
-    # 🧠 LIVE SMART CALCULATOR
-    # Because we removed the 'st.form', this math updates instantly on the screen!
-    calculated_advance = int(total_val * 0.25)
-    adv_val = c_money2.number_input("Booking Advance (25%)", min_value=0, value=calculated_advance, key="studio_advance_amount")
+    # The moment you type a number here, it fires 'update_advance'
+    total_val = c_money1.number_input("Total Amount", min_value=0, key="studio_total_amount", on_change=update_advance)
+    
+    # This box automatically updates with the result
+    adv_val = c_money2.number_input("Booking Advance (25%)", min_value=0, key="studio_advance_amount")
     
     method = c_money3.selectbox("Payment Method", ["Cash", "Bank", "eSewa"], key="studio_payment_method")
 
@@ -241,7 +246,7 @@ with tab2:
         e5_name = e5_col1.text_input("Event 5 Name (Optional)", placeholder="e.g. Reception")
         e5_date = e5_col2.date_input("Event 5 Date (AD)", key="d5")
 
-    # Save Button (Replaces the old form button)
+    # Save Button (Now works perfectly outside of the form)
     if st.button("💾 Save Booking", use_container_width=True, type="primary"):
         if not name:
             st.error("Please enter a Client Name!")
@@ -306,6 +311,12 @@ with tab2:
             new_rows_df = pd.DataFrame(rows_to_add)
             updated_df = pd.concat([df.drop(columns=['Real_Date'], errors='ignore'), new_rows_df], ignore_index=True)
             conn.update(worksheet="Sheet1", data=updated_df)
+            
+            # Clear fields from memory after successful save
+            for key in ["studio_client_name", "studio_total_amount", "studio_advance_amount"]:
+                if key in st.session_state:
+                    del st.session_state[key]
+                    
             st.cache_data.clear()
             st.success("All events saved to calendar successfully!")
             st.rerun()
