@@ -182,8 +182,8 @@ with tab2:
             name = st.text_input("Main Client Name (e.g. Rahul & Priya)")
             inc_cat = st.selectbox("Category", ["Wedding", "Commercial", "Event", "Portrait", "Music Video", "Other"])
             total_val = st.number_input("Total Amount", min_value=0)
-            adv_val = st.number_input("Advance Paid", min_value=0)
-            method = st.selectbox("Method", ["Cash", "Bank", "eSewa"])
+            adv_val = st.number_input("Booking Advance (25%)", min_value=0)
+            method = st.selectbox("Payment Method", ["Cash", "Bank", "eSewa"])
         else:
             c1, c2 = st.columns(2)
             name = c1.text_input("Main Client Name (e.g. Rahul & Priya)")
@@ -476,12 +476,12 @@ Project: {client}
 ---------------------------------
 Total Amount:    Rs. {data['Total']:,}
 
-Advance Paid:    Rs. {data['Advance']:,}"""
+Booking Advance (25%): Rs. {data['Advance']:,}"""
 
                 if data['Mid Payment'] > 0:
-                    invoice += f"\nMid Payment:     Rs. {data['Mid Payment']:,}"
+                    invoice += f"\nPost-Shoot (25%):     Rs. {data['Mid Payment']:,}"
                 if data['Final Payment'] > 0:
-                    invoice += f"\nFinal Payment:   Rs. {data['Final Payment']:,}"
+                    invoice += f"\nPost-Delivery (50%):  Rs. {data['Final Payment']:,}"
                     
                 invoice += f"""
 ---------------------------------
