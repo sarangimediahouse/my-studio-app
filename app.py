@@ -150,6 +150,27 @@ with tab1:
         upcoming = upcoming.rename(columns={"Date": "AD Date"})
         st.dataframe(upcoming[['Project', 'BS Date', 'AD Date', 'Status', 'Remaining']].head(5), hide_index=True, use_container_width=True)
 
+        # --- 🚨 AUTOMATIC OVERDUE PAYMENT ALERTS ---
+        st.divider()
+        st.subheader("🚨 Overdue Balances (Action Required)")
+        
+        # Filter for shoots that already happened (before or equal to today) and still have a remaining balance
+        past_shoots = df[(df['Type'] == 'Shoot') & (df['Real_Date'] <= today)].copy()
+        overdue_df = past_shoots[past_shoots['Remaining'] > 0].sort_values('Real_Date')
+        
+        if not overdue_df.empty:
+            st.error(f"⚠️ You have {len(overdue_df)} clients with pending final payments for past shoots!")
+            
+            # Format a clean table for quick viewing
+            overdue_display = overdue_df.rename(columns={"Date": "AD Date"})
+            st.dataframe(
+                overdue_display[['Project', 'BS Date', 'AD Date', 'Total', 'Remaining']], 
+                hide_index=True, 
+                use_container_width=True
+            )
+        else:
+            st.success("✅ All past shoots are fully paid up! No overdue balances.")
+
 # --- TAB 2: NEW BOOKING (RESTORED MULTI-EVENT FEATURE) ---
 with tab2:
     st.subheader("📝 New Booking")
