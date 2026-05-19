@@ -191,7 +191,21 @@ with tab2:
             c5, c6, c7 = st.columns(3)
             total_val = c5.number_input("Total Amount", min_value=0)
             adv_val = c6.number_input("Advance Paid", min_value=0)
-            method = c7.selectbox("Method", ["Cash", "Bank", "eSewa"])
+            st.markdown("**Client Details & Money**")
+        if is_mobile:
+            name = st.text_input("Main Client Name (e.g. Rahul & Priya)")
+            inc_cat = st.selectbox("Category", ["Wedding", "Commercial", "Event", "Portrait", "Music Video", "Other"])
+            total_val = st.number_input("Total Amount", min_value=0)
+            adv_val = st.number_input("Booking Advance (25%)", min_value=0)
+            method = st.selectbox("Payment Method", ["Cash", "Bank", "eSewa"])
+        else:
+            c1, c2 = st.columns(2)
+            name = c1.text_input("Main Client Name (e.g. Rahul & Priya)")
+            inc_cat = c2.selectbox("Category", ["Wedding", "Commercial", "Event", "Portrait", "Music Video", "Other"])
+            c5, c6, c7 = st.columns(3)
+            total_val = c5.number_input("Total Amount", min_value=0)
+            adv_val = c6.number_input("Booking Advance (25%)", min_value=0)
+            method = c7.selectbox("Payment Method", ["Cash", "Bank", "eSewa"])
 
         st.markdown("---")
         st.markdown("**Shoot Dates & Events**")
