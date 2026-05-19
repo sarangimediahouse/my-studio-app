@@ -514,36 +514,51 @@ SARANGI MEDIA HOUSE🙏"""
     st.subheader("✍️ Create Deal Quotation")
     st.caption("Generate a professional quote or contract proposal for prospective clients.")
     
-    with st.form("quote_form"):
-        if is_mobile:
-            q_client = st.text_input("Prospective Client Name")
-            q_service = st.selectbox("Package / Type", ["Wedding Photography", "Cinematography Combo", "Commercial Shoot", "Music Video Production", "Custom Event"])
-            q_price = st.number_input("Quoted Price (NPR)", min_value=0)
-            q_advance = st.selectbox("Required Advance %", ["50% Advance Payment", "30% Advance Payment", "20% Advance Payment", "No Advance Required"])
-            q_raw = st.radio("Raw Files Policy:", ["Raw data will be provided via client drive", "Raw files are not shared (Only edited versions)"], horizontal=True)
-            q_delivery = st.text_input("Estimated Delivery Time", value="3 to 4 Weeks")
+    # 🧠 THE LIVE QUOTE MATH BRAIN
+    def update_quote_advance():
+        if "quote_price" in st.session_state and "quote_adv_pct" in st.session_state:
+            pct_str = st.session_state.quote_adv_pct
+            price = st.session_state.quote_price
+            
+            if "50%" in pct_str: calc = price * 0.50
+            elif "30%" in pct_str: calc = price * 0.30
+            elif "25%" in pct_str: calc = price * 0.25
+            elif "20%" in pct_str: calc = price * 0.20
+            else: calc = 0
+            
+            st.session_state.quote_adv_amount = int(calc)
+
+    # Unified Layout (No st.form, so math updates instantly!)
+    col_q1, col_q2 = st.columns([2, 1])
+    q_client = col_q1.text_input("Prospective Client Name", key="quote_client")
+    q_service = col_q2.selectbox("Package / Type", ["Wedding Photography", "Cinematography Combo", "Commercial Shoot", "Music Video Production", "Custom Event"], key="quote_service")
+    
+    col_q3, col_q4, col_q5 = st.columns(3)
+    
+    # Inputs that trigger the math instantly when you type or select
+    q_price = col_q3.number_input("Quoted Price (NPR)", min_value=0, key="quote_price", on_change=update_quote_advance)
+    q_advance_pct = col_q4.selectbox("Required Advance %", ["25% Advance Payment", "30% Advance Payment", "50% Advance Payment", "20% Advance Payment", "No Advance Required"], key="quote_adv_pct", on_change=update_quote_advance)
+    
+    # Automatically populated exact NPR amount
+    q_adv_amount = col_q5.number_input("Calculated Advance (NPR)", min_value=0, key="quote_adv_amount")
+    
+    col_q6, col_q7 = st.columns([2, 1])
+    q_raw = col_q6.radio("Raw Files Policy:", ["Raw data will be provided via client drive", "Raw files are not shared (Only edited versions)"], horizontal=True, key="quote_raw")
+    q_delivery = col_q7.text_input("Estimated Delivery Time", value="3 to 4 Weeks", key="quote_delivery")
+    
+    q_notes = st.text_area("Custom Inclusions / Notes", placeholder="e.g., 1 Lead Photographer, 1 Cinematographer, Drone included for Main Day.", key="quote_notes")
+
+    if st.button("Generate Quotation", use_container_width=True, type="primary"):
+        if not q_client:
+            st.error("Please enter a prospective client name!")
         else:
-            col_q1, col_q2 = st.columns(2)
-            q_client = col_q1.text_input("Prospective Client Name")
-            q_service = col_q2.selectbox("Package / Type", ["Wedding Photography", "Cinematography Combo", "Commercial Shoot", "Music Video Production", "Custom Event"])
+            today_ad = date.today()
+            today_bs = nepali_datetime.date.today()
             
-            col_q3, col_q4, col_q5 = st.columns(3)
-            q_price = col_q3.number_input("Quoted Price (NPR)", min_value=0)
-            q_advance = col_q4.selectbox("Required Advance %", ["50% Advance Payment", "30% Advance Payment", "20% Advance Payment", "No Advance Required"])
-            q_delivery = col_q5.text_input("Estimated Delivery Time", value="3 to 4 Weeks")
+            # Format advance text cleanly for the WhatsApp message
+            adv_text = f"Rs. {q_adv_amount:,} ({q_advance_pct.split(' ')[0]})" if q_adv_amount > 0 else "No Advance Required"
             
-            q_raw = st.radio("Raw Files Policy:", ["Raw data will be provided via client drive", "Raw files are not shared (Only edited versions)"], horizontal=True)
-
-        q_notes = st.text_area("Custom Inclusions / Notes", placeholder="e.g., 1 Lead Photographer, 1 Cinematographer, Drone included for Main Day.")
-
-        if st.form_submit_button("Generate Quotation", use_container_width=True):
-            if not q_client:
-                st.error("Please enter a prospective client name!")
-            else:
-                today_ad = date.today()
-                today_bs = nepali_datetime.date.today()
-                
-                quote_text = f"""=================================
+            quote_text = f"""=================================
 💼 SARANGI MEDIA HOUSE 💼
        QUOTATION / PROPOSAL
 =================================
@@ -553,25 +568,25 @@ Project Type: {q_service}
 ---------------------------------
 💰 COMMERCIAL TERMS:
 Total Package Value:  Rs. {q_price:,}
-Booking Terms:        {q_advance}
+Booking Advance:      {adv_text}
 ---------------------------------
 🛠️ SERVICE POLICIES:
 Timeline:   {q_delivery} after event completion
 Data:       {q_raw}"""
 
-                if q_notes:
-                    quote_text += f"\n\n📋 CUSTOM INCLUSIONS & NOTES:\n{q_notes}"
+            if q_notes:
+                quote_text += f"\n\n📋 CUSTOM INCLUSIONS & NOTES:\n{q_notes}"
 
-                quote_text += """\n=================================
+            quote_text += """\n=================================
 *This proposal is valid for 15 days.*
 To lock your dates, kindly confirm via advance payment.
 
 Looking forward to working with you! 🙏
 SARANGI MEDIA HOUSE"""
-                
-                st.session_state['generated_quote'] = quote_text
+            
+            st.session_state['generated_quote'] = quote_text
 
-    # Display the quotation box outside the form if it has been generated
+    # Display the quotation box if it has been generated
     if 'generated_quote' in st.session_state and st.session_state['generated_quote']:
         st.markdown("**📋 Generated Proposal (Copy text below):**")
         st.text_area("Copy Paste to WhatsApp:", value=st.session_state['generated_quote'], height=350)
