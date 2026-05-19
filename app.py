@@ -175,29 +175,32 @@ with tab1:
 with tab2:
     st.subheader("📝 New Booking")
     st.caption("Book one client and add up to 5 different shoot dates at once!")
-    # 🧠 Initialize state and define calculation BEFORE the form starts
-    if "studio_total_amount" not in st.session_state:
-        st.session_state.studio_total_amount = 0
-    if "studio_advance_amount" not in st.session_state:
-        st.session_state.studio_advance_amount = 0
-
-    # Auto calculation logic
-    if 'studio_total_amount' in st.session_state:
-        st.session_state.studio_advance_amount = int(st.session_state.studio_total_amount * 0.25)
-
+    
     with st.form("booking_form", clear_on_submit=True):
         
-        st.markdown("**Client Details & Money**")
+       st.markdown("**Client Details & Money**")
         
-        # This unified layout scales beautifully on both desktop and mobile web screens
-        c_layout1, c_layout2 = st.columns([2, 1])
-        name = c_layout1.text_input("Main Client Name (e.g. Rahul & Priya)", key="studio_client_name")
-        inc_cat = c_layout2.selectbox("Category", ["Wedding", "Commercial", "Event", "Portrait", "Music Video", "Other"], key="studio_category")
-        
-        c_money1, c_money2, c_money3 = st.columns(3)
-        total_val = c_money1.number_input("Total Amount", min_value=0, key="studio_total_amount")
-        adv_val = c_money2.number_input("Booking Advance (25%)", min_value=0, key="studio_advance_amount")
-        method = c_money3.selectbox("Payment Method", ["Cash", "Bank", "eSewa"], key="studio_payment_method")
+        # 🧠 Isolated live-calculation zone
+        @st.fragment()
+        def render_money_fields():
+            c_layout1, c_layout2 = st.columns([2, 1])
+            # We use global so the main form submit button can still read what you typed
+            global name, inc_cat, total_val, adv_val, method
+            
+            name = c_layout1.text_input("Main Client Name (e.g. Rahul & Priya)", key="studio_client_name")
+            inc_cat = c_layout2.selectbox("Category", ["Wedding", "Commercial", "Event", "Portrait", "Music Video", "Other"], key="studio_category")
+            
+            c_money1, c_money2, c_money3 = st.columns(3)
+            total_val = c_money1.number_input("Total Amount", min_value=0, key="studio_total_amount")
+            
+            # Instantly calculate 25% based on what is currently typed inside the total box
+            calculated_advance = int(total_val * 0.25)
+            
+            adv_val = c_money2.number_input("Booking Advance (25%)", min_value=0, value=calculated_advance, key="studio_advance_amount")
+            method = c_money3.selectbox("Payment Method", ["Cash", "Bank", "eSewa"], key="studio_payment_method")
+
+        # Run the live zone
+        render_money_fields()
 
         st.markdown("---")
         st.markdown("**Shoot Dates & Events**")
