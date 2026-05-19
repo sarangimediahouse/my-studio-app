@@ -178,7 +178,6 @@ with tab2:
     with st.form("booking_form", clear_on_submit=True):
         
         st.markdown("**Client Details & Money**")
-        st.markdown("**Client Details & Money**")
         
         # This unified layout scales beautifully on both desktop and mobile web screens
         c_layout1, c_layout2 = st.columns([2, 1])
@@ -189,20 +188,6 @@ with tab2:
         total_val = c_money1.number_input("Total Amount", min_value=0, key="studio_total_amount")
         adv_val = c_money2.number_input("Booking Advance (25%)", min_value=0, key="studio_advance_amount")
         method = c_money3.selectbox("Payment Method", ["Cash", "Bank", "eSewa"], key="studio_payment_method")
-        if is_mobile:
-            name = st.text_input("Main Client Name (e.g. Rahul & Priya)")
-            inc_cat = st.selectbox("Category", ["Wedding", "Commercial", "Event", "Portrait", "Music Video", "Other"])
-            total_val = st.number_input("Total Amount", min_value=0)
-            adv_val = st.number_input("Booking Advance (25%)", min_value=0)
-            method = st.selectbox("Payment Method", ["Cash", "Bank", "eSewa"])
-        else:
-            c1, c2 = st.columns(2)
-            name = c1.text_input("Main Client Name (e.g. Rahul & Priya)")
-            inc_cat = c2.selectbox("Category", ["Wedding", "Commercial", "Event", "Portrait", "Music Video", "Other"])
-            c5, c6, c7 = st.columns(3)
-            total_val = c5.number_input("Total Amount", min_value=0)
-            adv_val = c6.number_input("Booking Advance (25%)", min_value=0)
-            method = c7.selectbox("Payment Method", ["Cash", "Bank", "eSewa"])
 
         st.markdown("---")
         st.markdown("**Shoot Dates & Events**")
