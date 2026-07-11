@@ -251,65 +251,30 @@ with tab2:
         if not name:
             st.error("Please enter a Client Name!")
         else:
-            rows_to_add = []
+            # 1. Combine all the function names and dates into one clean summary
+            events_summary = f"{e1_name} ({e1_date})"
+            if e2_name: events_summary += f" | {e2_name} ({e2_date})"
+            if e3_name: events_summary += f" | {e3_name} ({e3_date})"
+            if e4_name: events_summary += f" | {e4_name} ({e4_date})"
+            if e5_name: events_summary += f" | {e5_name} ({e5_date})"
             
-            # Create Event 1 (This holds all the money)
+            # 2. Attach the summary to the main project name
+            proj_name = f"{name} [{events_summary}]"
             bs1 = str(nepali_datetime.date.from_datetime_date(e1_date))
-            proj1_name = f"{name} - {e1_name}" if e1_name else name
-            rows_to_add.append({
-                "Project": proj1_name, "Date": str(e1_date), "BS Date": bs1, 
+            
+            # 3. Create ONE single row that holds all the money and the combined details
+            new_row = pd.DataFrame([{
+                "Project": proj_name, 
+                "Date": str(e1_date), # Uses the first event's date as the main date
+                "BS Date": bs1, 
                 "Total": total_val, "Advance": adv_val, "Mid Payment": 0, "Final Payment": 0,  
                 "Method": method, "Mid Method": method, "Final Method": method, 
                 "Expenses": 0, "Type": "Shoot", "Status": "Booked", 
                 "Income Category": inc_cat, "Expense Category": "General"
-            })
+            }])
             
-            # Create Event 2
-            if e2_name:
-                bs2 = str(nepali_datetime.date.from_datetime_date(e2_date))
-                rows_to_add.append({
-                    "Project": f"{name} - {e2_name}", "Date": str(e2_date), "BS Date": bs2, 
-                    "Total": 0, "Advance": 0, "Mid Payment": 0, "Final Payment": 0,  
-                    "Method": method, "Mid Method": method, "Final Method": method, 
-                    "Expenses": 0, "Type": "Shoot", "Status": "Booked", 
-                    "Income Category": inc_cat, "Expense Category": "General"
-                })
-                
-            # Create Event 3
-            if e3_name:
-                bs3 = str(nepali_datetime.date.from_datetime_date(e3_date))
-                rows_to_add.append({
-                    "Project": f"{name} - {e3_name}", "Date": str(e3_date), "BS Date": bs3, 
-                    "Total": 0, "Advance": 0, "Mid Payment": 0, "Final Payment": 0,  
-                    "Method": method, "Mid Method": method, "Final Method": method, 
-                    "Expenses": 0, "Type": "Shoot", "Status": "Booked", 
-                    "Income Category": inc_cat, "Expense Category": "General"
-                })
-
-            # Create Event 4
-            if e4_name:
-                bs4 = str(nepali_datetime.date.from_datetime_date(e4_date))
-                rows_to_add.append({
-                    "Project": f"{name} - {e4_name}", "Date": str(e4_date), "BS Date": bs4, 
-                    "Total": 0, "Advance": 0, "Mid Payment": 0, "Final Payment": 0,  
-                    "Method": method, "Mid Method": method, "Final Method": method, 
-                    "Expenses": 0, "Type": "Shoot", "Status": "Booked", 
-                    "Income Category": inc_cat, "Expense Category": "General"
-                })
-
-            # Create Event 5
-            if e5_name:
-                bs5 = str(nepali_datetime.date.from_datetime_date(e5_date))
-                rows_to_add.append({
-                    "Project": f"{name} - {e5_name}", "Date": str(e5_date), "BS Date": bs5, 
-                    "Total": 0, "Advance": 0, "Mid Payment": 0, "Final Payment": 0,  
-                    "Method": method, "Mid Method": method, "Final Method": method, 
-                    "Expenses": 0, "Type": "Shoot", "Status": "Booked", 
-                    "Income Category": inc_cat, "Expense Category": "General"
-                })
-
-            new_rows_df = pd.DataFrame(rows_to_add)
-            updated_df = pd.concat([df.drop(columns=['Real_Date'], errors='ignore'), new_rows_df], ignore_index=True)
+            # 4. Save it to Google Sheets
+            updated_df = pd.concat([df.drop(columns=['Real_Date'], errors='ignore'), new_row], ignore_index=True)
             conn.update(worksheet="Sheet1", data=updated_df)
             
             # Clear fields from memory after successful save
@@ -318,7 +283,7 @@ with tab2:
                     del st.session_state[key]
                     
             st.cache_data.clear()
-            st.success("All events saved to calendar successfully!")
+            st.success("Booking saved as a single package successfully!")
             st.rerun()
 
 # --- TAB 3: LEDGER ---
