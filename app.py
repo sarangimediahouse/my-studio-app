@@ -19,7 +19,7 @@ else:
 col1, col2 = st.columns([2, 8])
 with col1:
     try:
-        st.image("sarangi.png", use_container_width=True) 
+        st.image("Sarangi white logo.png", use_container_width=True) 
     except:
         st.write("🎥") 
 with col2:
